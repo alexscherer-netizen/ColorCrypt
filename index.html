@@ -7,29 +7,35 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-text-size-adjust: 100%; }
     body {
       background: #f0ede8; font-family: 'Courier New', monospace; color: #1a1a2e;
-      min-height: 100vh; display: flex; flex-direction: column; align-items: center;
-      padding: 20px 16px 80px;
+      min-height: 100vh; min-height: 100dvh;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 16px 12px 100px;
+      -webkit-tap-highlight-color: transparent;
     }
     h1 {
-      font-size: 30px; font-weight: 900; letter-spacing: -1px; margin: 0;
+      font-size: clamp(22px, 6vw, 30px); font-weight: 900; letter-spacing: -1px; margin: 0;
       background: linear-gradient(135deg, #2a2a4a 40%, #a07840);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
     button {
       font-family: 'Courier New', monospace; font-weight: 700; font-size: 13px;
-      letter-spacing: 2px; padding: 12px 22px; border-radius: 12px; cursor: pointer; transition: all 0.2s;
+      letter-spacing: 2px; padding: 14px 22px; border-radius: 12px;
+      cursor: pointer; transition: all 0.2s;
+      min-height: 48px; touch-action: manipulation;
     }
     .btn       { background: #fff; border: 1px solid #c8c0b8; color: #555; }
-    .btn:hover { border-color: #a07840; color: #1a1a2e; }
+    .btn:active { background: #f5f0ea; }
     .btn-accent { background: linear-gradient(135deg,#c9a96e,#a07840); border: none; color: #fff; }
+    .btn-accent:active { opacity: 0.85; }
     .btn-accent:disabled { background: #ddd; color: #aaa; cursor: not-allowed; }
-    .btn-danger { background: transparent; border: 1px solid #e0b0b0; color: #c06060; font-size: 12px; padding: 10px 18px; }
-    .btn-danger:hover { background: #fdecea; }
-    .btn-sm { padding: 8px 16px; font-size: 11px; }
+    .btn-danger { background: transparent; border: 1px solid #e0b0b0; color: #c06060; font-size: 12px; padding: 12px 18px; }
+    .btn-danger:active { background: #fdecea; }
+    .btn-sm { padding: 10px 16px; font-size: 11px; min-height: 40px; }
 
-    .screen { display: none; flex-direction: column; align-items: center; gap: 14px; width: 100%; max-width: 460px; }
+    .screen { display: none; flex-direction: column; align-items: center; gap: 12px; width: 100%; max-width: 420px; }
     .screen.active { display: flex; }
 
     /* Status */
@@ -85,32 +91,36 @@
     #join-input:focus { border-color: #c9a96e; }
 
     /* Boards */
-    .secret-bar { display: flex; gap: 10px; align-items: center; background: #fff; border: 1px solid #d8d0c8; border-radius: 14px; padding: 12px 20px; }
-    .board { display: flex; flex-direction: column; gap: 7px; width: 100%; }
-    .row   { display: flex; align-items: center; gap: 10px; border-radius: 12px; padding: 10px 14px; }
-    .row.active { background: #fff; border: 2px solid #a07840; }
+    .secret-bar { display: flex; gap: 10px; align-items: center; background: #fff; border: 1px solid #d8d0c8; border-radius: 14px; padding: 12px 16px; }
+    .board { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+    .row   { display: flex; align-items: center; gap: 8px; border-radius: 12px; padding: 10px 12px; }
+    .row.active { background: #fff; border: 2px solid #a07840; box-shadow: 0 2px 12px rgba(160,120,64,0.15); }
     .row.filled { background: #f8f4f0; border: 1px solid #d8d0c8; }
-    .row.empty  { background: #f0ede8; border: 1px solid #e0d8d0; opacity: 0.6; }
-    .row-num { font-size: 11px; color: #bbb; width: 22px; text-align: right; }
+    .row-num { font-size: 11px; color: #bbb; width: 20px; text-align: right; flex-shrink: 0; }
     .pegs    { display: flex; gap: 8px; flex: 1; justify-content: center; }
-    .peg     { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; transition: all 0.15s; }
+    .peg     { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; transition: all 0.15s; touch-action: manipulation; }
     .peg-empty { background: transparent; border: 2px dashed #c8c0b8; }
     .peg-click { cursor: pointer; }
-    .peg-hl    { transform: scale(1.12); }
-    .feedback  { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 48px; }
-    .fb-exact  { width: 18px; height: 18px; border-radius: 4px; background: #22c55e; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; color: #071a0e; }
-    .fb-color  { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid #f59e0b; }
-    .fb-none   { width: 18px; height: 18px; border-radius: 50%; border: 1px solid #d8d0c8; background: #ede8e2; }
+    .peg-hl    { transform: scale(1.15); }
+    .feedback  { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 48px; flex-shrink: 0; }
+    .fb-exact  { width: 20px; height: 20px; border-radius: 4px; background: #22c55e; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; color: #071a0e; }
+    .fb-color  { width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid #f59e0b; }
+    .fb-none   { width: 20px; height: 20px; border-radius: 50%; border: 1px solid #d8d0c8; background: #ede8e2; }
+
+    /* Progress indicator */
+    .progress-bar { width: 100%; background: #e8e0d8; border-radius: 8px; height: 6px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg,#c9a96e,#a07840); border-radius: 8px; transition: width 0.4s ease; }
+    .progress-label { font-size: 10px; color: #bbb; letter-spacing: 2px; text-align: center; }
 
     /* Palette */
-    .palette      { background: #fff; border: 1px solid #d8d0c8; border-radius: 16px; padding: 14px 20px; width: 100%; }
+    .palette      { background: #fff; border: 1px solid #d8d0c8; border-radius: 16px; padding: 14px 16px; width: 100%; }
     .pal-label    { font-size: 10px; letter-spacing: 4px; color: #aaa; margin-bottom: 10px; }
     .pal-colors   { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-    .color-dot    { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: all 0.15s; }
-    .color-dot.sel{ border-color: #1a1a2e; transform: scale(1.2); }
+    .color-dot    { width: 48px; height: 48px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: all 0.15s; touch-action: manipulation; }
+    .color-dot.sel{ border-color: #1a1a2e; transform: scale(1.15); box-shadow: 0 0 0 2px #fff, 0 0 0 4px #a07840; }
     .pal-hint     { font-size: 11px; color: #999; margin-top: 10px; text-align: center; }
 
-    .code-slots   { display: flex; gap: 12px; background: #fff; border: 1px solid #d8d0c8; border-radius: 16px; padding: 18px 24px; }
+    .code-slots   { display: flex; gap: 14px; background: #fff; border: 1px solid #d8d0c8; border-radius: 16px; padding: 18px 20px; justify-content: center; }
     .legend       { font-size: 11px; color: #bbb; text-align: center; line-height: 2; }
     .result-box   { border-radius: 20px; padding: 32px 36px; text-align: center; width: 100%; }
     .result-box h2{ font-size: 22px; font-weight: 900; margin-bottom: 8px; }
@@ -171,6 +181,20 @@
     #abort-dlg h3 { font-size: 17px; margin-bottom: 8px; }
     #abort-dlg p  { font-size: 13px; color: #999; margin-bottom: 20px; }
     #abort-dlg .btns { display: flex; gap: 10px; justify-content: center; }
+
+    #chat-toast {
+      position: fixed; bottom: 76px; right: 16px;
+      background: #1a1a2e; color: #e8e0d4;
+      padding: 10px 16px; border-radius: 12px;
+      font-size: 12px; max-width: 220px;
+      word-break: break-word; line-height: 1.4;
+      opacity: 0; transform: translateY(8px);
+      transition: opacity 0.25s, transform 0.25s;
+      z-index: 48; pointer-events: none;
+      border-left: 3px solid #c9a96e;
+    }
+    #chat-toast.show { opacity: 1; transform: translateY(0); }
+    #chat-toast .toast-sender { font-size: 9px; letter-spacing: 2px; color: #c9a96e; font-weight: 700; margin-bottom: 3px; }
 
     #banner { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: #1a1a2e; color: #e8e0d4; padding: 11px 22px; border-radius: 12px; font-size: 13px; letter-spacing: 1px; opacity: 0; transition: opacity .3s; z-index: 200; pointer-events: none; white-space: nowrap; }
     #banner.show { opacity: 1; }
@@ -263,6 +287,10 @@
   <div style="font-size:11px;color:#a07840;letter-spacing:2px;font-weight:700">DEIN GESETZTER CODE</div>
   <div class="secret-bar" id="watch-secret"></div>
   <div style="font-size:12px;color:#888;letter-spacing:1px">🎯 Gegner rät gerade...</div>
+  <div style="width:100%">
+    <div class="progress-label" id="progress-label">0 / 10 VERSUCHE</div>
+    <div class="progress-bar" style="margin-top:4px"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  </div>
   <div class="board" id="watch-board"></div>
   <button class="btn-danger" onclick="showAbort()">✕ ABBRECHEN</button>
   <div class="legend"><span class="fb-exact" style="display:inline-flex;align-items:center;justify-content:center;vertical-align:middle">✓</span> richtig &nbsp;·&nbsp; <span class="fb-color" style="display:inline-block;width:13px;height:13px;border:2px solid #f59e0b;vertical-align:middle"></span> falsche Position</div>
@@ -272,6 +300,10 @@
 <div id="screen-guess" class="screen">
   <div id="guess-role-lbl" style="font-size:11px;color:#a07840;letter-spacing:2px;font-weight:700"></div>
   <div class="secret-bar" id="secret-bar"></div>
+  <div style="width:100%">
+    <div class="progress-label" id="progress-label">0 / 10 VERSUCHE</div>
+    <div class="progress-bar" style="margin-top:4px"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  </div>
   <div class="board" id="board"></div>
   <div class="palette" id="guess-pal">
     <div class="pal-label">FARBPALETTE</div>
@@ -290,7 +322,23 @@
     <h2 id="result-title"></h2>
     <p id="result-sub"></p>
     <p style="font-size:12px;color:#aaa;margin-bottom:20px">Beim nächsten Spiel tauschen die Rollen!</p>
-    <button class="btn-accent" onclick="requestRestart()">NEUES SPIEL</button>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button class="btn-accent" onclick="requestRestart()">NEUES SPIEL</button>
+      <button class="btn-danger" onclick="endSession()">SITZUNG BEENDEN</button>
+    </div>
+  </div>
+</div>
+
+<!-- END SESSION OVERLAY -->
+<div id="endsession-ov" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:100;align-items:center;justify-content:center;">
+  <div style="background:#fff;border:1px solid #d8d0c8;border-radius:20px;padding:32px 36px;text-align:center;max-width:300px;width:90%;">
+    <div style="font-size:36px;margin-bottom:10px">👋</div>
+    <h3 style="font-size:17px;margin-bottom:8px">Sitzung beenden?</h3>
+    <p style="font-size:13px;color:#999;margin-bottom:20px">Die Statistik wird zurückgesetzt und du verlässt den Raum.</p>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn" onclick="hideEndSession()">ABBRECHEN</button>
+      <button class="btn-danger" onclick="confirmEndSession()">BEENDEN</button>
+    </div>
   </div>
 </div>
 
@@ -324,6 +372,7 @@
   </div>
 </div>
 
+<div id="chat-toast"><div class="toast-sender" id="toast-sender"></div><div id="toast-text"></div></div>
 <div id="banner"></div>
 
 <script>
@@ -574,6 +623,11 @@
         setTimeout(() => location.reload(), 2000);
         break;
 
+      case 'sessionEnded':
+        showBanner('Gegner hat die Sitzung beendet.');
+        setTimeout(() => location.reload(), 2500);
+        break;
+
       case 'chat':
         appendMsg(msg.from, msg.text);
         break;
@@ -599,7 +653,7 @@
     setCode.forEach((c, i) => {
       const d = document.createElement('div');
       d.className = 'peg' + (c ? '' : ' peg-empty') + (setSelCol ? ' peg-click' : '') + (setSelCol && !c ? ' peg-hl' : '');
-      d.style.cssText = 'width:38px;height:38px;' + (c ? 'background:' + hex(c) + ';box-shadow:0 0 10px ' + hex(c) + '55' : '');
+      d.style.cssText = 'width:44px;height:44px;' + (c ? 'background:' + hex(c) + ';box-shadow:0 0 10px ' + hex(c) + '55' : '');
       d.onclick = () => { if (!setSelCol) return; setCode[i] = setSelCol; renderSetSlots(); document.getElementById('set-confirm').disabled = setCode.includes(null); };
       el.appendChild(d);
     });
@@ -632,7 +686,7 @@
   function renderWatchBoard() {
     const el = document.getElementById('watch-board'); el.innerHTML = '';
     [...rows].reverse().forEach((r,ri) => el.appendChild(makeFilledRow(rows.length-1-ri, r)));
-    for (let i=0; i<MAX_ROWS-rows.length; i++) el.appendChild(makeEmptyRow(rows.length+1+i));
+    renderProgress();
   }
 
   // ── Guess board ────────────────────────────────────────────────────────────
@@ -641,8 +695,8 @@
     (secret || Array(CODE_LENGTH).fill(null)).forEach(c => {
       const d = document.createElement('div'); d.className = 'peg';
       d.style.cssText = secret && c
-        ? 'width:28px;height:28px;background:' + hex(c) + ';box-shadow:0 0 12px ' + hex(c) + '66'
-        : 'width:28px;height:28px;background:#e8e0d8;border:2px dashed #c8c0b8';
+        ? 'width:36px;height:36px;background:' + hex(c) + ';box-shadow:0 0 12px ' + hex(c) + '66'
+        : 'width:36px;height:36px;background:#e8e0d8;border:2px dashed #c8c0b8';
       el.appendChild(d);
     });
     const lbl = document.createElement('div');
@@ -652,6 +706,7 @@
   }
   function renderBoard() {
     const el = document.getElementById('board'); el.innerHTML = '';
+    // Nur gespielte Zeilen + aktive Zeile — keine leeren Platzhalter
     if (!done) {
       const row = document.createElement('div'); row.className = 'row active';
       const num = document.createElement('div'); num.className = 'row-num'; num.textContent = rows.length+1;
@@ -660,7 +715,7 @@
       guess.forEach((c,i) => {
         const p = document.createElement('div');
         p.className = 'peg'+(c?'':' peg-empty')+(guessSel?' peg-click':'')+(guessSel&&!c?' peg-hl':'');
-        p.style.cssText = 'width:30px;height:30px;'+(c?'background:'+hex(c)+';box-shadow:0 0 8px '+hex(c)+'44':'');
+        p.style.cssText = 'width:36px;height:36px;'+(c?'background:'+hex(c)+';box-shadow:0 0 8px '+hex(c)+'44':'');
         p.onclick = () => { if(!guessSel||done)return; guess[i]=guessSel; renderBoard(); document.getElementById('guess-btn').disabled=guess.includes(null); };
         pegs.appendChild(p);
       });
@@ -669,8 +724,8 @@
       el.appendChild(row);
     }
     [...rows].reverse().forEach((r,ri) => el.appendChild(makeFilledRow(rows.length-1-ri, r)));
-    const rem = MAX_ROWS-rows.length-(done?0:1);
-    for (let i=0; i<rem; i++) el.appendChild(makeEmptyRow(rows.length+(done?1:2)+i));
+    // Fortschrittsanzeige statt leerer Zeilen
+    renderProgress();
   }
   function onGuessColor(id) { guessSel=guessSel===id?null:id; renderPalette('guess-colors','guess-hint',guessSel,onGuessColor); renderBoard(); }
   function submitGuess() {
@@ -682,12 +737,21 @@
   }
 
   // ── Board helpers ──────────────────────────────────────────────────────────
+  function renderProgress() {
+    // Fortschrittsbalken aktualisieren
+    const pct = (rows.length / MAX_ROWS) * 100;
+    const fill = document.getElementById('progress-fill');
+    const lbl  = document.getElementById('progress-label');
+    if (fill) fill.style.width = pct + '%';
+    if (lbl)  lbl.textContent  = rows.length + ' / ' + MAX_ROWS + ' VERSUCHE';
+  }
+
   function makeFilledRow(idx, row) {
     const div = document.createElement('div'); div.className = 'row filled';
     const num = document.createElement('div'); num.className = 'row-num'; num.textContent = idx+1;
     div.appendChild(num);
     const pegs = document.createElement('div'); pegs.className = 'pegs';
-    row.guess.forEach(c => { const p=document.createElement('div'); p.className='peg'; p.style.cssText='width:30px;height:30px;background:'+hex(c)+';box-shadow:0 0 8px '+hex(c)+'44'; pegs.appendChild(p); });
+    row.guess.forEach(c => { const p=document.createElement('div'); p.className='peg'; p.style.cssText='width:36px;height:36px;background:'+hex(c)+';box-shadow:0 0 8px '+hex(c)+'44'; pegs.appendChild(p); });
     div.appendChild(pegs); div.appendChild(makeFeedback(row.result)); return div;
   }
   function makeEmptyRow(n) {
@@ -754,7 +818,12 @@
   function toggleChat() {
     chatOpen=!chatOpen;
     document.getElementById('chat-panel').classList.toggle('open',chatOpen);
-    if(chatOpen){unread=0;updateUnread();document.getElementById('chat-input').focus();const m=document.getElementById('chat-msgs');m.scrollTop=m.scrollHeight;}
+    if(chatOpen){
+      unread=0; updateUnread();
+      document.getElementById('chat-input').focus();
+      const m=document.getElementById('chat-msgs'); m.scrollTop=m.scrollHeight;
+      document.getElementById('chat-toast').classList.remove('show');
+    }
   }
   function updateUnread() {
     const b=document.getElementById('chat-unread'),tb=document.getElementById('chat-badge');
@@ -769,7 +838,13 @@
     const txt  = document.createElement('div'); txt.textContent=text;
     div.appendChild(snd); div.appendChild(txt); msgs.appendChild(div);
     msgs.scrollTop=msgs.scrollHeight;
-    if(!chatOpen&&!mine){unread++;updateUnread();}
+    if(!chatOpen&&!mine){
+      unread++;
+      updateUnread();
+      showChatToast('SPIELER '+(from+1)+': '+text);
+      // Vibration on mobile
+      if(navigator.vibrate) navigator.vibrate(100);
+    }
   }
   function sendChat() {
     const inp=document.getElementById('chat-input'),text=inp.value.trim();
@@ -795,6 +870,42 @@
   function dot(cls) { document.getElementById('dot').className='dot'+(cls?' '+cls:''); }
   function setStatus(t) { document.getElementById('status-txt').textContent=t; }
   function badge(t) { const b=document.getElementById('my-badge');b.style.display='block';b.textContent=t; }
+  // ── Chat toast ────────────────────────────────────────────────────────────
+  function showChatToast(msg) {
+    const toast = document.getElementById('chat-toast');
+    const parts = msg.split(': ');
+    document.getElementById('toast-sender').textContent = parts[0];
+    document.getElementById('toast-text').textContent = parts.slice(1).join(': ');
+    toast.classList.add('show');
+    clearTimeout(showChatToast._t);
+    showChatToast._t = setTimeout(() => toast.classList.remove('show'), 4000);
+  }
+
+  // ── End session ────────────────────────────────────────────────────────────
+  function endSession() {
+    document.getElementById('endsession-ov').style.display = 'flex';
+  }
+  function hideEndSession() {
+    document.getElementById('endsession-ov').style.display = 'none';
+  }
+  function confirmEndSession() {
+    hideEndSession();
+    broadcast({ type: 'sessionEnded' });
+    if (channel) { channel.unsubscribe(); channel = null; }
+    // Reset everything
+    rows=[]; done=false; stats=[
+      {wins:0,losses:0,totalAttempts:0,gamesPlayed:0},
+      {wins:0,losses:0,totalAttempts:0,gamesPlayed:0}
+    ];
+    document.getElementById('stats-bar').style.display='none';
+    document.getElementById('status-bar').style.display='none';
+    document.getElementById('chat-toggle').classList.remove('show');
+    document.getElementById('chat-panel').classList.remove('open');
+    document.getElementById('chat-msgs').innerHTML='';
+    showBanner('Sitzung beendet.');
+    show('lobby');
+  }
+
   function showBanner(t) { const b=document.getElementById('banner');b.textContent=t;b.classList.add('show');clearTimeout(showBanner._t);showBanner._t=setTimeout(()=>b.classList.remove('show'),3000); }
 </script>
 </body>
