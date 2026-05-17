@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mastermind Online</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #f0ede8; font-family: 'Courier New', monospace; color: #1a1a2e;
+      min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+      padding: 20px 16px 80px;
+    }
+    h1 {
+      font-size: 30px; font-weight: 900; letter-spacing: -1px; margin: 0;
+      background: linear-gradient(135deg, #2a2a4a 40%, #a07840);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    button {
+      font-family: 'Courier New', monospace; font-weight: 700; font-size: 13px;
+      letter-spacing: 2px; padding: 12px 22px; border-radius: 12px; cursor: pointer; transition: all 0.2s;
+    }
+    .btn       { background: #fff; border: 1px solid #c8c0b8; color: #555; }
+    .btn:hover { border-color: #a07840; color: #1a1a2e; }
+    .btn-accent { background: linear-gradient(135deg,#c9a96e,#a07840); border: none; color: #fff; }
+    .btn-accent:disabled { background: #ddd; color: #aaa; cursor: not-allowed; }
+    .btn-danger { background: transparent; border: 1px solid #e0b0b0; color: #c06060; font-size: 12px; padding: 10px 18px; }
+    .btn-danger:hover { background: #fdecea; }
+    .btn-sm { padding: 8px 16px; font-size: 11px; }
+
+    .screen { display: none; flex-direction: column; align-items: center; gap: 14px; width: 100%; max-width: 460px; }
+    .screen.active { display: flex; }
+
+    /* Status */
+    #status-bar {
+      width: 100%; max-width: 460px;
+      display: flex; align-items: center; gap: 10px;
+      background: #fff; border: 1px solid #d8d0c8; border-radius: 12px;
+      padding: 10px 16px; margin-bottom: 4px;
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
+    .dot.on  { background: #22c55e; box-shadow: 0 0 6px #22c55e88; }
+    .dot.wait{ background: #f59e0b; animation: pulse 1.2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+    #status-txt { font-size: 12px; color: #888; letter-spacing: 1px; flex: 1; }
+    #my-badge {
+      font-size: 10px; font-weight: 700; letter-spacing: 2px;
+      padding: 4px 10px; border-radius: 8px;
+      background: #fdf8f0; color: #a07840; border: 1px solid #d8c8a8; display: none;
+    }
+
+    /* Stats */
+    #stats-bar { display: none; width: 100%; max-width: 460px; margin-bottom: 4px; }
+    .stat-wrap { display: flex; gap: 8px; }
+    .stat-card { flex: 1; background: #fff; border: 1px solid #d8d0c8; border-radius: 12px; padding: 10px 12px; }
+    .stat-card.me { border-color: #c9a96e; background: #fdf8f0; }
+    .stat-name { font-size: 9px; letter-spacing: 3px; color: #bbb; margin-bottom: 6px; font-weight: 700; }
+    .stat-row  { display: flex; align-items: baseline; gap: 4px; margin: 2px 0; }
+    .s-win  { font-size: 16px; font-weight: 900; color: #22c55e; }
+    .s-loss { font-size: 16px; font-weight: 900; color: #e63946; }
+    .s-avg  { font-size: 16px; font-weight: 900; color: #a07840; }
+    .s-lbl  { font-size: 10px; color: #bbb; }
+    #stat-score { font-size: 18px; font-weight: 900; color: #a07840; }
+
+    /* Lobby */
+    .lobby-box {
+      background: #fff; border: 1px solid #d8d0c8; border-radius: 16px;
+      padding: 28px 24px; width: 100%; text-align: center;
+    }
+    .lobby-box h2 { font-size: 16px; color: #1a1a2e; margin-bottom: 8px; }
+    .lobby-box p  { font-size: 13px; color: #888; line-height: 1.8; margin-bottom: 20px; }
+    .room-code {
+      font-size: 28px; font-weight: 900; letter-spacing: 8px;
+      color: #a07840; background: #fdf8f0;
+      border: 2px dashed #d8c8a8; border-radius: 12px;
+      padding: 12px 20px; margin: 16px 0; display: inline-block;
+    }
+    #join-input {
+      font-family: 'Courier New', monospace; font-size: 20px; font-weight: 900;
+      letter-spacing: 6px; text-align: center; text-transform: uppercase;
+      width: 160px; padding: 12px; border: 1px solid #d8d0c8; border-radius: 12px;
+      background: #fafaf8; color: #a07840; outline: none;
+    }
+    #join-input:focus { border-color: #c9a96e; }
+
+    /* Boards */
+    .secret-bar { display: flex; gap: 10px; align-items: center; background: #fff; border: 1px solid #d8d0c8; border-radius: 14px; padding: 12px 20px; }
+    .board { display: flex; flex-direction: column; gap: 7px; width: 100%; }
+    .row   { display: flex; align-items: center; gap: 10px; border-radius: 12px; padding: 10px 14px; }
+    .row.active { background: #fff; border: 2px solid #a07840; }
+    .row.filled { background: #f8f4f0; border: 1px solid #d8d0c8; }
+    .row.empty  { background: #f0ede8; border: 1px solid #e0d8d0; opacity: 0.6; }
+    .row-num { font-size: 11px; color: #bbb; width: 22px; text-align: right; }
+    .pegs    { display: flex; gap: 8px; flex: 1; justify-content: center; }
+    .peg     { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; transition: all 0.15s; }
+    .peg-empty { background: transparent; border: 2px dashed #c8c0b8; }
+    .peg-click { cursor: pointer; }
+    .peg-hl    { transform: scale(1.12); }
+    .feedback  { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 48px; }
+    .fb-exact  { width: 18px; height: 18px; border-radius: 4px; background: #22c55e; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; color: #071a0e; }
+    .fb-color  { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid #f59e0b; }
+    .fb-none   { width: 18px; height: 18px; border-radius: 50%; border: 1px solid #d8d0c8; background: #ede8e2; }
+
+    /* Palette */
+    .palette      { background: #fff; border: 1px solid #d8d0c8; border-radius: 16px; padding: 14px 20px; width: 100%; }
+    .pal-label    { font-size: 10px; letter-spacing: 4px; color: #aaa; margin-bottom: 10px; }
+    .pal-colors   { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .color-dot    { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: all 0.15s; }
+    .color-dot.sel{ border-color: #1a1a2e; transform: scale(1.2); }
+    .pal-hint     { font-size: 11px; color: #999; margin-top: 10px; text-align: center; }
+
+    .code-slots   { display: flex; gap: 12px; background: #fff; border: 1px solid #d8d0c8; border-radius: 16px; padding: 18px 24px; }
+    .legend       { font-size: 11px; color: #bbb; text-align: center; line-height: 2; }
+    .result-box   { border-radius: 20px; padding: 32px 36px; text-align: center; width: 100%; }
+    .result-box h2{ font-size: 22px; font-weight: 900; margin-bottom: 8px; }
+    .result-box p { font-size: 13px; color: #888; margin-bottom: 8px; }
+
+    .wait-box { background: #fff; border: 2px dashed #c8c0b8; border-radius: 20px; padding: 40px 32px; text-align: center; width: 100%; }
+    .wait-box .emo { font-size: 44px; margin-bottom: 14px; }
+    .wait-box h2   { font-size: 17px; color: #1a1a2e; margin-bottom: 8px; }
+    .wait-box p    { font-size: 13px; color: #888; line-height: 1.8; }
+
+    /* Chat */
+    #chat-toggle {
+      position: fixed; bottom: 16px; right: 16px;
+      background: linear-gradient(135deg,#c9a96e,#a07840);
+      color: #fff; border: none; border-radius: 50%;
+      width: 48px; height: 48px; font-size: 20px; cursor: pointer;
+      box-shadow: 0 4px 16px rgba(160,120,64,0.4); z-index: 49;
+      display: none; align-items: center; justify-content: center;
+    }
+    #chat-toggle.show { display: flex; }
+    #chat-badge { position: absolute; top: 0; right: 0; background: #e63946; color: #fff; border-radius: 10px; padding: 1px 5px; font-size: 9px; font-weight: 900; display: none; }
+    #chat-panel {
+      position: fixed; bottom: 0; right: 0; width: 300px;
+      background: #fff; border: 1px solid #d8d0c8; border-bottom: none;
+      border-radius: 14px 14px 0 0; box-shadow: 0 -4px 24px rgba(0,0,0,0.1);
+      display: none; flex-direction: column; z-index: 50;
+    }
+    #chat-panel.open { display: flex; }
+    #chat-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; background: #fdf8f0;
+      border-bottom: 1px solid #e8e0d8; border-radius: 14px 14px 0 0;
+      cursor: pointer; font-size: 11px; font-weight: 700; letter-spacing: 2px; color: #a07840;
+    }
+    #chat-unread { background: #e63946; color: #fff; border-radius: 10px; padding: 1px 7px; font-size: 10px; font-weight: 900; display: none; }
+    #chat-msgs   { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; max-height: 220px; min-height: 220px; }
+    .msg      { max-width: 80%; padding: 7px 10px; border-radius: 12px; font-size: 12px; line-height: 1.4; word-break: break-word; }
+    .msg.mine { align-self: flex-end; background: #fdf0d8; border: 1px solid #e8d0a8; color: #1a1a2e; }
+    .msg.them { align-self: flex-start; background: #f0ede8; border: 1px solid #d8d0c8; color: #1a1a2e; }
+    .msg-sender { font-size: 9px; letter-spacing: 2px; font-weight: 700; margin-bottom: 3px; }
+    .msg.mine .msg-sender { color: #a07840; }
+    .msg.them .msg-sender { color: #888; }
+    #typing-ind { padding: 4px 12px 6px; font-size: 11px; color: #a07840; min-height: 22px; display: flex; align-items: center; gap: 6px; }
+    .dots span  { display: inline-block; width: 5px; height: 5px; background: #c9a96e; border-radius: 50%; animation: bounce 1.2s infinite; }
+    .dots span:nth-child(2) { animation-delay: .2s; }
+    .dots span:nth-child(3) { animation-delay: .4s; }
+    @keyframes bounce { 0%,60%,100%{transform:translateY(0);opacity:.4} 30%{transform:translateY(-4px);opacity:1} }
+    #chat-row   { display: flex; gap: 6px; padding: 8px 10px; border-top: 1px solid #e8e0d8; }
+    #chat-input { flex: 1; padding: 8px 10px; border: 1px solid #d8d0c8; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 12px; color: #1a1a2e; background: #fafaf8; outline: none; }
+    #chat-input:focus { border-color: #c9a96e; }
+    #chat-send  { padding: 8px 12px; border-radius: 8px; background: linear-gradient(135deg,#c9a96e,#a07840); border: none; color: #fff; font-family: 'Courier New', monospace; font-size: 13px; font-weight: 700; cursor: pointer; }
+
+    /* Abort overlay */
+    #abort-ov { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 100; align-items: center; justify-content: center; }
+    #abort-ov.active { display: flex; }
+    #abort-dlg { background: #fff; border: 1px solid #d8d0c8; border-radius: 20px; padding: 32px 36px; text-align: center; max-width: 300px; width: 90%; }
+    #abort-dlg .emo { font-size: 36px; margin-bottom: 10px; }
+    #abort-dlg h3 { font-size: 17px; margin-bottom: 8px; }
+    #abort-dlg p  { font-size: 13px; color: #999; margin-bottom: 20px; }
+    #abort-dlg .btns { display: flex; gap: 10px; justify-content: center; }
+
+    #banner { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: #1a1a2e; color: #e8e0d4; padding: 11px 22px; border-radius: 12px; font-size: 13px; letter-spacing: 1px; opacity: 0; transition: opacity .3s; z-index: 200; pointer-events: none; white-space: nowrap; }
+    #banner.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<div style="text-align:center;margin-bottom:16px">
+  <div style="font-size:9px;letter-spacing:5px;color:#bbb;margin-bottom:4px">ONLINE</div>
+  <h1>MASTERMIND</h1>
+  <div id="subtitle" style="font-size:10px;color:#aaa;margin-top:5px;letter-spacing:3px">SPIELMODUS WÄHLEN</div>
+</div>
+
+<!-- STATUS BAR -->
+<div id="status-bar" style="display:none">
+  <div class="dot" id="dot"></div>
+  <div id="status-txt">Verbinde...</div>
+  <div id="my-badge"></div>
+</div>
+
+<!-- STATS BAR -->
+<div id="stats-bar">
+  <div class="stat-wrap">
+    <div class="stat-card" id="stat-p1">
+      <div class="stat-name">SPIELER 1</div>
+      <div class="stat-row"><span class="s-win">0</span><span class="s-lbl">Siege</span></div>
+      <div class="stat-row"><span class="s-loss">0</span><span class="s-lbl">Niederlagen</span></div>
+      <div class="stat-row"><span class="s-avg">–</span><span class="s-avg" style="display:none"></span><span class="s-lbl">∅ Versuche</span></div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;flex-shrink:0">
+      <div id="stat-score" style="font-size:18px;font-weight:900;color:#a07840">0 : 0</div>
+      <div style="font-size:9px;color:#bbb;letter-spacing:2px">SITZUNG</div>
+    </div>
+    <div class="stat-card" id="stat-p2">
+      <div class="stat-name">SPIELER 2</div>
+      <div class="stat-row"><span class="s-win">0</span><span class="s-lbl">Siege</span></div>
+      <div class="stat-row"><span class="s-loss">0</span><span class="s-lbl">Niederlagen</span></div>
+      <div class="stat-row"><span class="s-avg">–</span><span class="s-avg" style="display:none"></span><span class="s-lbl">∅ Versuche</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- LOBBY -->
+<div id="screen-lobby" class="screen active">
+  <div class="lobby-box">
+    <div style="font-size:32px;margin-bottom:12px">🎯</div>
+    <h2>Mastermind Online</h2>
+    <p>Spiele gegen jemanden über das Internet.<br>Erstelle einen Raum oder tritt einem bei.</p>
+    <div style="display:flex;flex-direction:column;gap:10px;align-items:center">
+      <button class="btn-accent" onclick="createRoom()">RAUM ERSTELLEN</button>
+      <div style="font-size:11px;color:#bbb;letter-spacing:2px">— ODER —</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="join-input" type="text" maxlength="4" placeholder="CODE" oninput="this.value=this.value.toUpperCase()"/>
+        <button class="btn-accent btn-sm" onclick="joinRoom()">BEITRETEN</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- WAITING FOR OPPONENT -->
+<div id="screen-waiting" class="screen">
+  <div class="wait-box">
+    <div class="emo">⏳</div>
+    <h2>Warte auf Gegner...</h2>
+    <p>Teile diesen Code mit deinem Gegner:</p>
+    <div class="room-code" id="display-room-code">????</div>
+    <p style="font-size:12px">Der Gegner gibt diesen Code auf der Startseite ein.</p>
+  </div>
+  <button class="btn" onclick="leaveRoom()">ABBRECHEN</button>
+</div>
+
+<!-- SET CODE -->
+<div id="screen-set" class="screen">
+  <div id="set-role-lbl" style="text-align:center;color:#888;font-size:13px;line-height:1.8"></div>
+  <div class="code-slots" id="set-slots"></div>
+  <div class="palette" id="set-pal">
+    <div class="pal-label">FARBPALETTE</div>
+    <div class="pal-colors" id="set-colors"></div>
+    <div class="pal-hint" id="set-hint" style="display:none"></div>
+  </div>
+  <div style="display:flex;gap:10px">
+    <button class="btn" onclick="resetSet()">ZURÜCKSETZEN</button>
+    <button class="btn-accent" id="set-confirm" onclick="sendCode()" disabled>SENDEN →</button>
+  </div>
+</div>
+
+<!-- SETTER WAITS -->
+<div id="screen-wait-guess" class="screen">
+  <div style="font-size:11px;color:#a07840;letter-spacing:2px;font-weight:700">DEIN GESETZTER CODE</div>
+  <div class="secret-bar" id="watch-secret"></div>
+  <div style="font-size:12px;color:#888;letter-spacing:1px">🎯 Gegner rät gerade...</div>
+  <div class="board" id="watch-board"></div>
+  <button class="btn-danger" onclick="showAbort()">✕ ABBRECHEN</button>
+  <div class="legend"><span class="fb-exact" style="display:inline-flex;align-items:center;justify-content:center;vertical-align:middle">✓</span> richtig &nbsp;·&nbsp; <span class="fb-color" style="display:inline-block;width:13px;height:13px;border:2px solid #f59e0b;vertical-align:middle"></span> falsche Position</div>
+</div>
+
+<!-- GUESSER -->
+<div id="screen-guess" class="screen">
+  <div id="guess-role-lbl" style="font-size:11px;color:#a07840;letter-spacing:2px;font-weight:700"></div>
+  <div class="secret-bar" id="secret-bar"></div>
+  <div class="board" id="board"></div>
+  <div class="palette" id="guess-pal">
+    <div class="pal-label">FARBPALETTE</div>
+    <div class="pal-colors" id="guess-colors"></div>
+    <div class="pal-hint" id="guess-hint" style="display:none"></div>
+  </div>
+  <button class="btn-accent" id="guess-btn" onclick="submitGuess()" disabled>RATEN →</button>
+  <button class="btn-danger" onclick="showAbort()">✕ ABBRECHEN</button>
+  <div class="legend"><span class="fb-exact" style="display:inline-flex;align-items:center;justify-content:center;vertical-align:middle">✓</span> richtig &nbsp;·&nbsp; <span class="fb-color" style="display:inline-block;width:13px;height:13px;border:2px solid #f59e0b;vertical-align:middle"></span> falsche Position</div>
+</div>
+
+<!-- RESULT -->
+<div id="screen-result" class="screen">
+  <div class="result-box" id="result-box">
+    <div id="result-emo" style="font-size:48px;margin-bottom:10px"></div>
+    <h2 id="result-title"></h2>
+    <p id="result-sub"></p>
+    <p style="font-size:12px;color:#aaa;margin-bottom:20px">Beim nächsten Spiel tauschen die Rollen!</p>
+    <button class="btn-accent" onclick="requestRestart()">NEUES SPIEL</button>
+  </div>
+</div>
+
+<!-- ABORT OVERLAY -->
+<div id="abort-ov">
+  <div id="abort-dlg">
+    <div class="emo">🏳️</div>
+    <h3>Spiel abbrechen?</h3>
+    <p>Das Spiel wird für beide beendet.</p>
+    <div class="btns">
+      <button class="btn" onclick="hideAbort()">WEITER</button>
+      <button class="btn-danger" onclick="sendAbort()">ABBRECHEN</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHAT -->
+<button id="chat-toggle" onclick="toggleChat()">💬<span id="chat-badge"></span></button>
+<div id="chat-panel">
+  <div id="chat-head" onclick="toggleChat()">
+    <span>💬 CHAT</span>
+    <span id="chat-unread"></span>
+  </div>
+  <div id="chat-msgs"></div>
+  <div id="typing-ind"></div>
+  <div id="chat-row">
+    <input id="chat-input" type="text" placeholder="Nachricht..." maxlength="200"
+      onkeydown="if(event.key==='Enter')sendChat()"
+      oninput="onTyping()"/>
+    <button id="chat-send" onclick="sendChat()">↑</button>
+  </div>
+</div>
+
+<div id="banner"></div>
+
+<script>
+  // ── Config ─────────────────────────────────────────────────────────────────
+  const SUPABASE_URL = 'https://ugitunttmvswyxmyhnjb.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnaXR1bnR0bXZzd3l4bXlobmpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwMjczNTksImV4cCI6MjA5NDYwMzM1OX0.aL_253uFlWL0CWpIF0Muz7ay7USKiHyCn2rCj7fIdiM';
+
+  function saveSupabase() {} // nicht mehr nötig
+
+  // ── Supabase ───────────────────────────────────────────────────────────────
+  let sb      = null;
+  let channel = null;
+
+  function initSupabase() {
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    showBanner('Supabase verbunden ✓');
+  }
+
+  initSupabase();
+
+  // ── Game constants ─────────────────────────────────────────────────────────
+  const COLORS = [
+    { id:'red',    hex:'#e63946', label:'Rot'    },
+    { id:'blue',   hex:'#457b9d', label:'Blau'   },
+    { id:'green',  hex:'#2d6a4f', label:'Grün'   },
+    { id:'yellow', hex:'#f4a261', label:'Gelb'   },
+    { id:'purple', hex:'#7b2d8b', label:'Lila'   },
+    { id:'pink',   hex:'#e07a9b', label:'Pink'   },
+  ];
+  const CODE_LENGTH = 4;
+  const MAX_ROWS    = 10;
+  const hex = id => COLORS.find(c => c.id === id)?.hex ?? '#ccc';
+
+  function evaluate(secret, guess) {
+    let exact = 0, color = 0;
+    const sU = Array(CODE_LENGTH).fill(false);
+    const gU = Array(CODE_LENGTH).fill(false);
+    for (let i = 0; i < CODE_LENGTH; i++) {
+      if (guess[i] === secret[i]) { exact++; sU[i] = gU[i] = true; }
+    }
+    for (let i = 0; i < CODE_LENGTH; i++) {
+      if (gU[i]) continue;
+      for (let j = 0; j < CODE_LENGTH; j++) {
+        if (!sU[j] && guess[i] === secret[j]) { color++; sU[j] = true; break; }
+      }
+    }
+    return { exact, color };
+  }
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  let roomCode    = null;
+  let mySlot      = null;   // 0 oder 1
+  let amSetter    = false;
+  let setterSlot  = 0;
+  let myCode      = null;
+  let gameSecret  = null;
+  let setCode     = Array(CODE_LENGTH).fill(null);
+  let setSelCol   = null;
+  let guess       = Array(CODE_LENGTH).fill(null);
+  let guessSel    = null;
+  let rows        = [];
+  let done        = false;
+  let restartLock = false;
+  let stats       = [
+    { wins:0, losses:0, totalAttempts:0, gamesPlayed:0 },
+    { wins:0, losses:0, totalAttempts:0, gamesPlayed:0 },
+  ];
+
+  // ── Room ───────────────────────────────────────────────────────────────────
+  function genCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    return Array.from({length:4}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
+  }
+
+  function createRoom() {
+    if (!sb) { showBanner('Supabase nicht verbunden! Zugangsdaten eingeben.'); return; }
+    roomCode = genCode();
+    mySlot   = 0;
+    subscribeRoom();
+    document.getElementById('display-room-code').textContent = roomCode;
+    show('waiting');
+    document.getElementById('status-bar').style.display = 'flex';
+    dot('wait'); setStatus('Warte auf Gegner...');
+    badge('SPIELER 1');
+  }
+
+  function joinRoom() {
+    if (!sb) { showBanner('Supabase nicht verbunden! Zugangsdaten eingeben.'); return; }
+    const code = document.getElementById('join-input').value.trim().toUpperCase();
+    if (code.length !== 4) { showBanner('Bitte 4-stelligen Raum-Code eingeben!'); return; }
+    roomCode = code;
+    mySlot   = 1;
+    subscribeRoom();
+    document.getElementById('status-bar').style.display = 'flex';
+    dot('wait'); setStatus('Trete Raum bei...');
+    badge('SPIELER 2');
+    // Announce joining
+    setTimeout(() => broadcast({ type: 'joined', slot: 1 }), 500);
+  }
+
+  function leaveRoom() {
+    if (channel) channel.unsubscribe();
+    channel = null; roomCode = null; mySlot = null;
+    show('lobby');
+    document.getElementById('status-bar').style.display = 'none';
+  }
+
+  // ── Supabase Realtime Channel ──────────────────────────────────────────────
+  function subscribeRoom() {
+    if (channel) channel.unsubscribe();
+    channel = sb.channel('mastermind-' + roomCode, {
+      config: { broadcast: { self: false } }
+    });
+
+    channel
+      .on('broadcast', { event: 'game' }, ({ payload }) => handle(payload))
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          dot('on'); setStatus('Verbunden mit Raum ' + roomCode);
+          if (mySlot === 1) {
+            // Spieler 2 tritt bei – informiere Spieler 1
+            broadcast({ type: 'joined', slot: 1 });
+          }
+        }
+      });
+  }
+
+  function broadcast(msg) {
+    if (!channel) return;
+    channel.send({ type: 'broadcast', event: 'game', payload: msg });
+  }
+
+  // ── Message Handler ────────────────────────────────────────────────────────
+  function handle(msg) {
+    switch (msg.type) {
+
+      case 'joined':
+        // Spieler 2 ist beigetreten – Spieler 1 startet
+        if (mySlot === 0) {
+          dot('on'); setStatus('Beide verbunden!');
+          showBanner('Gegner beigetreten – Spiel startet!');
+          document.getElementById('chat-toggle').classList.add('show');
+          // Sync stats to player 2
+          broadcast({ type: 'syncStats', stats });
+          startRound();
+        }
+        break;
+
+      case 'syncStats':
+        if (mySlot === 1) {
+          stats = msg.stats;
+          renderStats();
+          dot('on'); setStatus('Beide verbunden!');
+          showBanner('Raum beigetreten – Spiel startet!');
+          document.getElementById('chat-toggle').classList.add('show');
+        }
+        break;
+
+      case 'becomeSetter':
+        if (msg.target !== mySlot) return;
+        amSetter = true;
+        badge('SPIELER ' + (mySlot+1) + ' · SETZER');
+        rows = []; done = false; myCode = null; gameSecret = null;
+        setCode = Array(CODE_LENGTH).fill(null); setSelCol = null;
+        renderSetSlots();
+        renderPalette('set-colors', 'set-hint', null, onSetColor);
+        document.getElementById('set-confirm').disabled = true;
+        document.getElementById('set-role-lbl').textContent = 'Du bist Code-Setzer – lege den Geheimcode fest!';
+        show('set');
+        break;
+
+      case 'becomeGuesser':
+        if (msg.target !== mySlot) return;
+        amSetter = false;
+        badge('SPIELER ' + (mySlot+1) + ' · RATER');
+        rows = []; done = false; myCode = null; gameSecret = null;
+        document.getElementById('wait-setter-text') && (document.getElementById('wait-setter-text').textContent = 'Dein Gegner legt den Code fest...');
+        show('wait-setter-screen');
+        break;
+
+      case 'codeSet':
+        // Nur der Rater reagiert
+        if (mySlot === setterSlot) return;
+        guess = Array(CODE_LENGTH).fill(null); guessSel = null;
+        renderSecretBar(null);
+        renderBoard();
+        renderPalette('guess-colors', 'guess-hint', null, onGuessColor);
+        document.getElementById('guess-btn').disabled = true;
+        show('guess');
+        showBanner('Code gesetzt – knack ihn!');
+        break;
+
+      case 'guess':
+        // Nur der Setter verarbeitet den Rateversuch und sendet Ergebnis
+        if (!amSetter) return;
+        if (!myCode || done) return;
+        const result = evaluate(myCode, msg.guess);
+        rows.push({ guess: msg.guess, result });
+        renderWatchBoard();
+        // Ergebnis an beide senden
+        broadcast({ type: 'guessResult', guess: msg.guess, result, rowIndex: rows.length - 1 });
+        // Spielende prüfen
+        if (result.exact === CODE_LENGTH) {
+          done = true;
+          const guesserSlot = 1 - setterSlot;
+          stats[guesserSlot].wins++;       stats[guesserSlot].gamesPlayed++;
+          stats[guesserSlot].totalAttempts += rows.length;
+          stats[setterSlot].losses++;      stats[setterSlot].gamesPlayed++;
+          broadcast({ type: 'gameOver', winner: guesserSlot, attempts: rows.length, secret: myCode, stats });
+        } else if (rows.length >= MAX_ROWS) {
+          done = true;
+          stats[setterSlot].wins++;        stats[setterSlot].gamesPlayed++;
+          stats[1-setterSlot].losses++;    stats[1-setterSlot].gamesPlayed++;
+          stats[1-setterSlot].totalAttempts += rows.length;
+          broadcast({ type: 'gameOver', winner: setterSlot, attempts: rows.length, secret: myCode, stats });
+        }
+        break;
+
+      case 'guessResult':
+        // Rater bekommt Ergebnis
+        if (amSetter) return;
+        rows.push({ guess: msg.guess, result: msg.result });
+        renderBoard();
+        break;
+
+      case 'gameOver':
+        done = true;
+        gameSecret = msg.secret;
+        stats = msg.stats;
+        renderStats();
+        if (amSetter) renderWatchBoard();
+        else { renderSecretBar(gameSecret); renderBoard(); }
+        setTimeout(() => showResult(msg), 800);
+        break;
+
+      case 'restart':
+        if (restartLock) return;
+        restartLock = true;
+        rows = []; done = false; myCode = null; gameSecret = null;
+        setterSlot = 1 - setterSlot;
+        showBanner('Rollen tauschen!');
+        startRound();
+        setTimeout(() => { restartLock = false; }, 2000);
+        break;
+
+      case 'abort':
+        showBanner('Gegner hat abgebrochen.');
+        setTimeout(() => location.reload(), 2000);
+        break;
+
+      case 'chat':
+        appendMsg(msg.from, msg.text);
+        break;
+
+      case 'typing':
+        showTyping(msg.from, msg.active);
+        break;
+    }
+  }
+
+  // ── Game flow ──────────────────────────────────────────────────────────────
+  function startRound() {
+    broadcast({ type: 'becomeSetter',  target: setterSlot });
+    broadcast({ type: 'becomeGuesser', target: 1 - setterSlot });
+    // Auch lokal anwenden
+    handle({ type: 'becomeSetter',  target: setterSlot });
+    handle({ type: 'becomeGuesser', target: 1 - setterSlot });
+  }
+
+  // ── Set Code ───────────────────────────────────────────────────────────────
+  function renderSetSlots() {
+    const el = document.getElementById('set-slots'); el.innerHTML = '';
+    setCode.forEach((c, i) => {
+      const d = document.createElement('div');
+      d.className = 'peg' + (c ? '' : ' peg-empty') + (setSelCol ? ' peg-click' : '') + (setSelCol && !c ? ' peg-hl' : '');
+      d.style.cssText = 'width:38px;height:38px;' + (c ? 'background:' + hex(c) + ';box-shadow:0 0 10px ' + hex(c) + '55' : '');
+      d.onclick = () => { if (!setSelCol) return; setCode[i] = setSelCol; renderSetSlots(); document.getElementById('set-confirm').disabled = setCode.includes(null); };
+      el.appendChild(d);
+    });
+  }
+  function onSetColor(id) { setSelCol = setSelCol===id?null:id; renderPalette('set-colors','set-hint',setSelCol,onSetColor); renderSetSlots(); }
+  function resetSet() { setCode=Array(CODE_LENGTH).fill(null); setSelCol=null; renderSetSlots(); renderPalette('set-colors','set-hint',null,onSetColor); document.getElementById('set-confirm').disabled=true; }
+  function sendCode() {
+    if (setCode.includes(null)) return;
+    myCode = [...setCode];
+    renderWatchSecret(myCode);
+    renderWatchBoard();
+    show('wait-guess');
+    showBanner('Code gesendet!');
+    broadcast({ type: 'codeSet' });
+  }
+
+  // ── Watch board ────────────────────────────────────────────────────────────
+  function renderWatchSecret(code) {
+    const el = document.getElementById('watch-secret'); el.innerHTML = '';
+    code.forEach(c => {
+      const d = document.createElement('div');
+      d.style.cssText = 'width:28px;height:28px;border-radius:50%;background:' + hex(c) + ';box-shadow:0 0 10px ' + hex(c) + '55';
+      el.appendChild(d);
+    });
+    const lbl = document.createElement('div');
+    lbl.style.cssText = 'margin-left:8px;font-size:10px;letter-spacing:3px;color:#a07840;font-weight:700';
+    lbl.textContent = 'DEIN CODE';
+    el.appendChild(lbl);
+  }
+  function renderWatchBoard() {
+    const el = document.getElementById('watch-board'); el.innerHTML = '';
+    [...rows].reverse().forEach((r,ri) => el.appendChild(makeFilledRow(rows.length-1-ri, r)));
+    for (let i=0; i<MAX_ROWS-rows.length; i++) el.appendChild(makeEmptyRow(rows.length+1+i));
+  }
+
+  // ── Guess board ────────────────────────────────────────────────────────────
+  function renderSecretBar(secret) {
+    const el = document.getElementById('secret-bar'); el.innerHTML = '';
+    (secret || Array(CODE_LENGTH).fill(null)).forEach(c => {
+      const d = document.createElement('div'); d.className = 'peg';
+      d.style.cssText = secret && c
+        ? 'width:28px;height:28px;background:' + hex(c) + ';box-shadow:0 0 12px ' + hex(c) + '66'
+        : 'width:28px;height:28px;background:#e8e0d8;border:2px dashed #c8c0b8';
+      el.appendChild(d);
+    });
+    const lbl = document.createElement('div');
+    lbl.style.cssText = 'margin-left:6px;font-size:10px;letter-spacing:3px;color:#bbb';
+    lbl.textContent = secret ? 'ENTHÜLLT' : 'GEHEIM';
+    el.appendChild(lbl);
+  }
+  function renderBoard() {
+    const el = document.getElementById('board'); el.innerHTML = '';
+    if (!done) {
+      const row = document.createElement('div'); row.className = 'row active';
+      const num = document.createElement('div'); num.className = 'row-num'; num.textContent = rows.length+1;
+      row.appendChild(num);
+      const pegs = document.createElement('div'); pegs.className = 'pegs';
+      guess.forEach((c,i) => {
+        const p = document.createElement('div');
+        p.className = 'peg'+(c?'':' peg-empty')+(guessSel?' peg-click':'')+(guessSel&&!c?' peg-hl':'');
+        p.style.cssText = 'width:30px;height:30px;'+(c?'background:'+hex(c)+';box-shadow:0 0 8px '+hex(c)+'44':'');
+        p.onclick = () => { if(!guessSel||done)return; guess[i]=guessSel; renderBoard(); document.getElementById('guess-btn').disabled=guess.includes(null); };
+        pegs.appendChild(p);
+      });
+      row.appendChild(pegs);
+      const sp = document.createElement('div'); sp.style.width='48px'; row.appendChild(sp);
+      el.appendChild(row);
+    }
+    [...rows].reverse().forEach((r,ri) => el.appendChild(makeFilledRow(rows.length-1-ri, r)));
+    const rem = MAX_ROWS-rows.length-(done?0:1);
+    for (let i=0; i<rem; i++) el.appendChild(makeEmptyRow(rows.length+(done?1:2)+i));
+  }
+  function onGuessColor(id) { guessSel=guessSel===id?null:id; renderPalette('guess-colors','guess-hint',guessSel,onGuessColor); renderBoard(); }
+  function submitGuess() {
+    if (guess.includes(null)||done) return;
+    broadcast({ type: 'guess', guess: [...guess] });
+    guess = Array(CODE_LENGTH).fill(null); guessSel = null;
+    renderPalette('guess-colors','guess-hint',null,onGuessColor);
+    document.getElementById('guess-btn').disabled = true;
+  }
+
+  // ── Board helpers ──────────────────────────────────────────────────────────
+  function makeFilledRow(idx, row) {
+    const div = document.createElement('div'); div.className = 'row filled';
+    const num = document.createElement('div'); num.className = 'row-num'; num.textContent = idx+1;
+    div.appendChild(num);
+    const pegs = document.createElement('div'); pegs.className = 'pegs';
+    row.guess.forEach(c => { const p=document.createElement('div'); p.className='peg'; p.style.cssText='width:30px;height:30px;background:'+hex(c)+';box-shadow:0 0 8px '+hex(c)+'44'; pegs.appendChild(p); });
+    div.appendChild(pegs); div.appendChild(makeFeedback(row.result)); return div;
+  }
+  function makeEmptyRow(n) {
+    const div = document.createElement('div'); div.className = 'row empty';
+    const nd = document.createElement('div'); nd.className = 'row-num'; nd.style.color='#ccc'; nd.textContent=n;
+    div.appendChild(nd);
+    const pegs = document.createElement('div'); pegs.className = 'pegs';
+    for(let j=0;j<CODE_LENGTH;j++){const p=document.createElement('div');p.style.cssText='width:30px;height:30px;border-radius:50%;border:1px dashed #d0c8c0';pegs.appendChild(p);}
+    div.appendChild(pegs); const sp=document.createElement('div');sp.style.width='48px';div.appendChild(sp); return div;
+  }
+  function makeFeedback({exact,color}) {
+    const items=[...Array(exact).fill('e'),...Array(color).fill('c'),...Array(CODE_LENGTH-exact-color).fill('n')];
+    const g=document.createElement('div'); g.className='feedback';
+    items.forEach(t=>{const d=document.createElement('div');d.className=t==='e'?'fb-exact':t==='c'?'fb-color':'fb-none';if(t==='e')d.textContent='✓';g.appendChild(d);});
+    return g;
+  }
+  function renderPalette(colId, hintId, sel, onSel) {
+    const el=document.getElementById(colId); el.innerHTML='';
+    const hint=document.getElementById(hintId);
+    COLORS.forEach(c=>{const d=document.createElement('div');d.className='color-dot'+(sel===c.id?' sel':'');d.style.background=c.hex;d.style.boxShadow=sel===c.id?'0 0 18px '+c.hex+'cc':'0 0 6px '+c.hex+'44';d.title=c.label;d.onclick=()=>onSel(c.id);el.appendChild(d);});
+    hint.style.display=sel?'block':'none';
+    if(sel)hint.textContent=(COLORS.find(c=>c.id===sel)?.label||'')+' gewählt — auf ein Feld tippen';
+  }
+
+  // ── Result ─────────────────────────────────────────────────────────────────
+  function showResult(msg) {
+    const iWon = msg.winner === mySlot;
+    const box = document.getElementById('result-box');
+    box.style.cssText = 'background:'+(iWon?'#e8f5ee':'#f5e8e8')+';border:1px solid '+(iWon?'#2d6a4f':'#c06060');
+    document.getElementById('result-emo').textContent   = iWon ? '🏆' : '💀';
+    document.getElementById('result-title').style.color = iWon ? '#22c55e' : '#e63946';
+    document.getElementById('result-title').textContent = iWon ? 'Du hast gewonnen!' : 'Du hast verloren!';
+    document.getElementById('result-sub').textContent   = msg.winner === (amSetter?mySlot:1-mySlot)
+      ? 'Code nicht geknackt nach '+msg.attempts+' Versuchen.'
+      : 'Code in '+msg.attempts+' Versuchen geknackt!';
+    show('result');
+  }
+  function requestRestart() { broadcast({ type: 'restart' }); handle({ type: 'restart' }); }
+
+  // ── Stats ──────────────────────────────────────────────────────────────────
+  function renderStats() {
+    document.getElementById('stats-bar').style.display = 'block';
+    [0,1].forEach(i => {
+      const s = stats[i];
+      const card = document.getElementById('stat-p'+(i+1));
+      card.className = 'stat-card'+(i===mySlot?' me':'');
+      const spans = card.querySelectorAll('span');
+      spans[0].textContent = s.wins;
+      spans[2].textContent = s.losses;
+      spans[4].textContent = s.gamesPlayed>0?(s.totalAttempts/s.gamesPlayed).toFixed(1):'–';
+    });
+    document.getElementById('stat-score').textContent = stats[0].wins+' : '+stats[1].wins;
+  }
+
+  // ── Abort ──────────────────────────────────────────────────────────────────
+  function showAbort() { document.getElementById('abort-ov').classList.add('active'); }
+  function hideAbort() { document.getElementById('abort-ov').classList.remove('active'); }
+  function sendAbort() { broadcast({ type: 'abort' }); hideAbort(); showBanner('Spiel abgebrochen.'); setTimeout(()=>show('lobby'),1500); }
+  document.getElementById('abort-ov').addEventListener('click', e => { if(e.target.id==='abort-ov')hideAbort(); });
+
+  // ── Chat ───────────────────────────────────────────────────────────────────
+  let chatOpen=false, unread=0, typingTimer=null, typing=false;
+
+  function toggleChat() {
+    chatOpen=!chatOpen;
+    document.getElementById('chat-panel').classList.toggle('open',chatOpen);
+    if(chatOpen){unread=0;updateUnread();document.getElementById('chat-input').focus();const m=document.getElementById('chat-msgs');m.scrollTop=m.scrollHeight;}
+  }
+  function updateUnread() {
+    const b=document.getElementById('chat-unread'),tb=document.getElementById('chat-badge');
+    if(unread>0){b.textContent=unread;tb.textContent=unread;b.style.display='inline';tb.style.display='inline';}
+    else{b.style.display='none';tb.style.display='none';}
+  }
+  function appendMsg(from, text) {
+    const mine = from===mySlot;
+    const msgs = document.getElementById('chat-msgs');
+    const div  = document.createElement('div'); div.className='msg '+(mine?'mine':'them');
+    const snd  = document.createElement('div'); snd.className='msg-sender'; snd.textContent='SPIELER '+(from+1);
+    const txt  = document.createElement('div'); txt.textContent=text;
+    div.appendChild(snd); div.appendChild(txt); msgs.appendChild(div);
+    msgs.scrollTop=msgs.scrollHeight;
+    if(!chatOpen&&!mine){unread++;updateUnread();}
+  }
+  function sendChat() {
+    const inp=document.getElementById('chat-input'),text=inp.value.trim();
+    if(!text)return;
+    if(typing){typing=false;clearTimeout(typingTimer);broadcast({type:'typing',from:mySlot,active:false});}
+    broadcast({type:'chat',from:mySlot,text});
+    appendMsg(mySlot,text);
+    inp.value='';
+  }
+  function onTyping() {
+    if(!typing){typing=true;broadcast({type:'typing',from:mySlot,active:true});}
+    clearTimeout(typingTimer);
+    typingTimer=setTimeout(()=>{if(typing){typing=false;broadcast({type:'typing',from:mySlot,active:false});}},1500);
+  }
+  function showTyping(from,active) {
+    const el=document.getElementById('typing-ind');
+    if(active){el.innerHTML='<span style="font-size:11px;color:#a07840">Spieler '+(from+1)+' schreibt</span><span class="dots"><span></span><span></span><span></span></span>';}
+    else el.innerHTML='';
+  }
+
+  // ── UI ─────────────────────────────────────────────────────────────────────
+  function show(id) { document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById('screen-'+id)?.classList.add('active'); }
+  function dot(cls) { document.getElementById('dot').className='dot'+(cls?' '+cls:''); }
+  function setStatus(t) { document.getElementById('status-txt').textContent=t; }
+  function badge(t) { const b=document.getElementById('my-badge');b.style.display='block';b.textContent=t; }
+  function showBanner(t) { const b=document.getElementById('banner');b.textContent=t;b.classList.add('show');clearTimeout(showBanner._t);showBanner._t=setTimeout(()=>b.classList.remove('show'),3000); }
+</script>
+</body>
+</html>
