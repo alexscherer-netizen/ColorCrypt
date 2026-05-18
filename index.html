@@ -196,6 +196,29 @@
     #chat-toast.show { opacity: 1; transform: translateY(0); }
     #chat-toast .toast-sender { font-size: 9px; letter-spacing: 2px; color: #c9a96e; font-weight: 700; margin-bottom: 3px; }
 
+    /* Haupt-Menü Cards */
+    .menu-card {
+      width: 100%; max-width: 420px;
+      padding: 22px 24px; border-radius: 16px; cursor: pointer;
+      background: #fff; border: 1px solid #d8d0c8;
+      display: flex; align-items: center; gap: 18px; transition: border-color 0.2s;
+    }
+    .menu-card:hover, .menu-card:active { border-color: #a07840; }
+    .menu-icon  { font-size: 34px; flex-shrink: 0; }
+    .menu-title { font-weight: 700; font-size: 14px; color: #1a1a2e; letter-spacing: 1px; }
+    .menu-sub   { font-size: 12px; color: #888; margin-top: 4px; }
+
+    /* Lokale Modi-Cards */
+    .local-card {
+      width: 100%; max-width: 420px;
+      padding: 18px 20px; border-radius: 14px; cursor: pointer;
+      background: #fff; border: 1px solid #d8d0c8;
+      display: flex; align-items: center; gap: 14px; transition: border-color 0.2s;
+    }
+    .local-card:hover, .local-card:active { border-color: #a07840; }
+
+    .ai-info { font-size:11px;color:#999;letter-spacing:1px; }
+    .ai-info span { color:#a07840; }
     #banner { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: #1a1a2e; color: #e8e0d4; padding: 11px 22px; border-radius: 12px; font-size: 13px; letter-spacing: 1px; opacity: 0; transition: opacity .3s; z-index: 200; pointer-events: none; white-space: nowrap; }
     #banner.show { opacity: 1; }
   </style>
@@ -206,6 +229,7 @@
   <div style="font-size:9px;letter-spacing:5px;color:#bbb;margin-bottom:4px">ONLINE</div>
   <h1>MASTERMIND</h1>
   <div id="subtitle" style="font-size:10px;color:#aaa;margin-top:5px;letter-spacing:3px">SPIELMODUS WÄHLEN</div>
+<div id="main-menu-btn" style="display:none;font-size:13px;font-weight:700;letter-spacing:3px;color:#a07840;cursor:pointer;margin-top:8px;padding:8px 16px;border:1px solid #d8c8a8;border-radius:10px;background:#fdf8f0" onclick="goMainMenu()">← HAUPTMENÜ</div>
 </div>
 
 <!-- STATUS BAR -->
@@ -237,8 +261,31 @@
   </div>
 </div>
 
-<!-- LOBBY -->
-<div id="screen-lobby" class="screen active">
+<!-- HAUPT-MENÜ -->
+<div id="screen-main-menu" class="screen active">
+  <div style="font-size:13px;color:#999;margin-bottom:4px">Wähle einen Modus</div>
+  <div class="menu-card" onclick="showOnline()">
+    <div class="menu-icon">🌐</div>
+    <div>
+      <div class="menu-title">ONLINE SPIELEN</div>
+      <div class="menu-sub">Gegen andere über das Internet</div>
+    </div>
+  </div>
+  <div class="menu-card" onclick="showLocal()">
+    <div class="menu-icon">🏠</div>
+    <div>
+      <div class="menu-title">LOKAL SPIELEN</div>
+      <div class="menu-sub">VS Computer · 2 Spieler · KI beobachten</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:16px;margin-top:8px">
+    <div style="font-size:11px;color:#bbb;cursor:pointer;letter-spacing:1px;text-decoration:underline" onclick="show('impressum')">Impressum</div>
+    <div style="font-size:11px;color:#bbb;cursor:pointer;letter-spacing:1px;text-decoration:underline" onclick="show('datenschutz')">Datenschutz</div>
+  </div>
+</div>
+
+<!-- ONLINE LOBBY -->
+<div id="screen-lobby" class="screen">
   <div class="lobby-box">
     <div style="font-size:32px;margin-bottom:12px">🎯</div>
     <h2>Mastermind Online</h2>
@@ -388,7 +435,6 @@
 
   function initSupabase() {
     sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    showBanner('Supabase verbunden ✓');
   }
 
   initSupabase();
@@ -908,5 +954,428 @@
 
   function showBanner(t) { const b=document.getElementById('banner');b.textContent=t;b.classList.add('show');clearTimeout(showBanner._t);showBanner._t=setTimeout(()=>b.classList.remove('show'),3000); }
 </script>
+
+<!-- ═══════════ LOKALE MODI ═══════════ -->
+
+<!-- LOKAL MENÜ -->
+<div id="screen-local-menu" class="screen">
+  <div style="font-size:13px;color:#999;margin-bottom:4px">Wähle einen Spielmodus</div>
+  <div class="local-card" onclick="startMode('vs-computer')">
+    <div style="font-size:30px">🤖</div>
+    <div><div class="menu-title">VS COMPUTER</div><div class="menu-sub">KI legt den Code fest — du rätst</div></div>
+  </div>
+  <div class="local-card" onclick="startMode('2player')">
+    <div style="font-size:30px">👥</div>
+    <div><div class="menu-title">2 SPIELER</div><div class="menu-sub">Spieler 1 legt Code — Spieler 2 rät</div></div>
+  </div>
+  <div class="local-card" onclick="startMode('vs-ai')">
+    <div style="font-size:30px">🧠</div>
+    <div><div class="menu-title">KI BEOBACHTEN</div><div class="menu-sub">Du legst den Code — KI versucht ihn zu knacken</div></div>
+  </div>
+</div>
+
+<!-- LOKAL SET CODE -->
+<div id="screen-local-set" class="screen">
+  <div id="local-set-label" style="text-align:center;color:#888;font-size:13px;line-height:1.8"></div>
+  <div style="display:flex;gap:14px;background:#fff;border:1px solid #d8d0c8;border-radius:16px;padding:18px 24px;" id="local-set-slots"></div>
+  <div class="palette" style="max-width:420px">
+    <div class="pal-label">FARBPALETTE</div>
+    <div class="pal-colors" id="local-set-colors"></div>
+    <div class="pal-hint" id="local-set-hint" style="display:none"></div>
+  </div>
+  <div style="display:flex;gap:10px">
+    <button class="btn" onclick="localResetSet()">ZURÜCKSETZEN</button>
+    <button class="btn-accent" id="local-set-confirm" onclick="localConfirmCode()" disabled>BESTÄTIGEN →</button>
+  </div>
+</div>
+
+<!-- LOKAL HIDE -->
+<div id="screen-local-hide" class="screen">
+  <div style="display:flex;flex-direction:column;align-items:center;background:#fff;border:2px dashed #c8c0b8;border-radius:20px;padding:40px 32px;text-align:center;max-width:360px;width:100%">
+    <div style="font-size:48px;margin-bottom:14px">🙈</div>
+    <p style="color:#888;font-size:13px;line-height:2;margin-bottom:24px">Code gespeichert.<br>Spieler 1 schaut jetzt weg.<br>Spieler 2 startet das Spiel!</p>
+    <button class="btn-accent" onclick="localStartGuessing()">SPIEL STARTEN →</button>
+  </div>
+</div>
+
+<!-- LOKAL GUESS -->
+<div id="screen-local-guess" class="screen">
+  <div class="secret-bar" id="local-secret-bar"></div>
+  <div style="width:100%">
+    <div class="progress-label" id="local-progress-label">0 / 10 VERSUCHE</div>
+    <div class="progress-bar" style="margin-top:4px"><div class="progress-fill" id="local-progress-fill" style="width:0%"></div></div>
+  </div>
+  <div class="board" id="local-board"></div>
+  <div class="palette">
+    <div class="pal-label">FARBPALETTE</div>
+    <div class="pal-colors" id="local-guess-colors"></div>
+    <div class="pal-hint" id="local-guess-hint" style="display:none"></div>
+  </div>
+  <button class="btn-accent" id="local-guess-btn" onclick="localSubmitGuess()" disabled>RATEN →</button>
+  <button class="btn-danger" onclick="localAbort()">✕ SPIEL ABBRECHEN</button>
+  <div class="legend">
+    <span class="fb-exact" style="display:inline-flex;align-items:center;justify-content:center;vertical-align:middle">✓</span>
+    Farbe + Position korrekt &nbsp;·&nbsp;
+    <span style="display:inline-block;width:13px;height:13px;border-radius:50%;border:2px solid #f59e0b;vertical-align:middle"></span>
+    Farbe korrekt, Position falsch
+  </div>
+</div>
+
+<!-- LOKAL AI SCREEN -->
+<div id="screen-local-ai" class="screen">
+  <div class="secret-bar" id="local-ai-secret-bar"></div>
+  <div class="ai-info" id="local-ai-info"></div>
+  <div class="board" id="local-ai-board"></div>
+  <button class="btn-accent" id="local-ai-btn" onclick="localDoAiGuess()">KI RATEN LASSEN →</button>
+  <button class="btn-danger" onclick="localAbort()">✕ SPIEL ABBRECHEN</button>
+  <div class="legend">
+    <span class="fb-exact" style="display:inline-flex;align-items:center;justify-content:center;vertical-align:middle">✓</span>
+    Farbe + Position korrekt &nbsp;·&nbsp;
+    <span style="display:inline-block;width:13px;height:13px;border-radius:50%;border:2px solid #f59e0b;vertical-align:middle"></span>
+    Farbe korrekt, Position falsch
+  </div>
+</div>
+
+<!-- LOKAL RESULT -->
+<div id="screen-local-result" class="screen">
+  <div class="result-box" id="local-result-box">
+    <div id="local-result-emoji" style="font-size:52px;margin-bottom:12px"></div>
+    <h2 id="local-result-title" style="font-size:24px;font-weight:900;margin-bottom:8px"></h2>
+    <p id="local-result-sub" style="font-size:13px;color:#888;margin-bottom:24px"></p>
+    <button class="btn-accent" onclick="showLocal()">NEUES SPIEL</button>
+  </div>
+</div>
+
+
+<script>
+  // ══════════════════════════════════════════════════════
+  //  NAVIGATION HAUPT-MENÜ
+  // ══════════════════════════════════════════════════════
+
+  function showOnline() {
+    document.getElementById('subtitle').textContent = 'ONLINE SPIELEN';
+    document.getElementById('main-menu-btn').style.display = 'block';
+    document.getElementById('status-bar').style.display = 'flex';
+    show('lobby');
+  }
+
+  function showLocal() {
+    document.getElementById('subtitle').textContent = 'LOKAL SPIELEN';
+    document.getElementById('main-menu-btn').style.display = 'block';
+    lMode=null; lSecret=[]; lRows=[]; lGuess=Array(CODE_LENGTH).fill(null);
+    lSelColor=null; lSetCode=Array(CODE_LENGTH).fill(null); lSetSel=null;
+    lAiAll=[]; lAiPossible=[]; lAiThinking=false;
+    const aiRes=document.querySelector('.local-ai-result'); if(aiRes) aiRes.remove();
+    show('local-menu');
+  }
+
+  function goMainMenu() {
+    document.getElementById('subtitle').textContent = 'SPIELMODUS WÄHLEN';
+    document.getElementById('main-menu-btn').style.display = 'none';
+    document.getElementById('status-bar').style.display = 'none';
+    document.getElementById('stats-bar').style.display = 'none';
+    document.getElementById('chat-toggle').classList.remove('show');
+    document.getElementById('chat-panel').classList.remove('open');
+    show('main-menu');
+  }
+
+  // ══════════════════════════════════════════════════════
+  //  LOKALE SPIELLOGIK
+  // ══════════════════════════════════════════════════════
+
+  const COLORS_L = [
+    { id:'red',    hex:'#e63946', label:'Rot'    },
+    { id:'blue',   hex:'#457b9d', label:'Blau'   },
+    { id:'green',  hex:'#2d6a4f', label:'Grün'   },
+    { id:'yellow', hex:'#f4a261', label:'Gelb'   },
+    { id:'purple', hex:'#7b2d8b', label:'Lila'   },
+    { id:'pink',   hex:'#e07a9b', label:'Pink'   },
+  ];
+  const IDS_L = COLORS_L.map(c => c.id);
+  const lHex = id => COLORS_L.find(c=>c.id===id)?.hex ?? '#ccc';
+
+  let lMode=null, lSecret=[], lRows=[], lGuess=Array(CODE_LENGTH).fill(null);
+  let lSelColor=null, lSetCode=Array(CODE_LENGTH).fill(null), lSetSel=null;
+  let lAiAll=[], lAiPossible=[], lAiThinking=false;
+
+  function lEval(secret, guess) {
+    let exact=0, color=0;
+    const sU=Array(CODE_LENGTH).fill(false), gU=Array(CODE_LENGTH).fill(false);
+    for(let i=0;i<CODE_LENGTH;i++){if(guess[i]===secret[i]){exact++;sU[i]=gU[i]=true;}}
+    for(let i=0;i<CODE_LENGTH;i++){if(gU[i])continue;for(let j=0;j<CODE_LENGTH;j++){if(!sU[j]&&guess[i]===secret[j]){color++;sU[j]=true;break;}}}
+    return {exact,color};
+  }
+
+  function lRandCode() {
+    const s=[...IDS_L];
+    for(let i=s.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[s[i],s[j]]=[s[j],s[i]];}
+    return s.slice(0,CODE_LENGTH);
+  }
+
+  function lBuildAll() {
+    const r=[];
+    function b(c){if(c.length===CODE_LENGTH){r.push([...c]);return;}for(const id of IDS_L){c.push(id);b(c);c.pop();}}
+    b([]); return r;
+  }
+
+  function lKnuth(possible, all, first) {
+    if(first) return ['red','red','blue','blue'];
+    if(possible.length<=2) return possible[0];
+    let best=null, bestScore=Infinity;
+    const cands=possible.length<=20?possible:all;
+    for(const g of cands){
+      const buckets={};
+      for(const p of possible){const r=lEval(p,g);const k=r.exact+','+r.color;buckets[k]=(buckets[k]||0)+1;}
+      const worst=Math.max(...Object.values(buckets));
+      if(worst<bestScore||(worst===bestScore&&possible.includes(g))){bestScore=worst;best=g;}
+    }
+    return best;
+  }
+
+  function startMode(m) {
+    lMode=m;
+    if(m==='vs-computer'){
+      lSecret=lRandCode(); lRows=[]; lGuess=Array(CODE_LENGTH).fill(null); lSelColor=null;
+      lRenderSecBar(false); lRenderBoard();
+      lRenderPal('local-guess-colors','local-guess-hint',null,lOnGuessCol);
+      document.getElementById('local-guess-btn').disabled=true;
+      show('local-guess');
+    } else if(m==='2player'){
+      lSetCode=Array(CODE_LENGTH).fill(null); lSetSel=null;
+      document.getElementById('local-set-label').textContent='Spieler 1 legt den Geheimcode fest. Spieler 2 schaut weg!';
+      lRenderSetSlots(); lRenderPal('local-set-colors','local-set-hint',null,lOnSetCol);
+      document.getElementById('local-set-confirm').disabled=true;
+      show('local-set');
+    } else if(m==='vs-ai'){
+      lSetCode=Array(CODE_LENGTH).fill(null); lSetSel=null;
+      document.getElementById('local-set-label').textContent='Lege einen Geheimcode fest. Die KI versucht ihn zu knacken!';
+      lRenderSetSlots(); lRenderPal('local-set-colors','local-set-hint',null,lOnSetCol);
+      document.getElementById('local-set-confirm').disabled=true;
+      show('local-set');
+    }
+  }
+
+  // ── Set Code ───────────────────────────────────────────────────────────────
+  function lRenderSetSlots() {
+    const el=document.getElementById('local-set-slots'); el.innerHTML='';
+    lSetCode.forEach((c,i)=>{
+      const d=document.createElement('div');
+      d.style.cssText='width:44px;height:44px;border-radius:50%;flex-shrink:0;cursor:pointer;transition:all .15s;touch-action:manipulation;'+(c?'background:'+lHex(c)+';box-shadow:0 0 10px '+lHex(c)+'55':'background:transparent;border:2px dashed #c8c0b8')+(lSetSel&&!c?';transform:scale(1.12)':'');
+      d.onclick=()=>{if(!lSetSel)return;lSetCode[i]=lSetSel;lRenderSetSlots();document.getElementById('local-set-confirm').disabled=lSetCode.includes(null);};
+      el.appendChild(d);
+    });
+  }
+  function lOnSetCol(id){lSetSel=lSetSel===id?null:id;lRenderPal('local-set-colors','local-set-hint',lSetSel,lOnSetCol);lRenderSetSlots();}
+  function localResetSet(){lSetCode=Array(CODE_LENGTH).fill(null);lSetSel=null;lRenderSetSlots();lRenderPal('local-set-colors','local-set-hint',null,lOnSetCol);document.getElementById('local-set-confirm').disabled=true;}
+  function localConfirmCode(){
+    lSecret=[...lSetCode];
+    if(lMode==='2player'){show('local-hide');}
+    else{
+      lAiAll=lBuildAll(); lAiPossible=[...lAiAll]; lRows=[]; lAiThinking=false;
+      lRenderAiSecBar(); lRenderAiBoard();
+      document.getElementById('local-ai-info').innerHTML='🤖 KI analysiert noch <span style="color:#a07840">'+lAiPossible.length+'</span> mögliche Codes';
+      const btn=document.getElementById('local-ai-btn');btn.disabled=false;btn.textContent='KI RATEN LASSEN →';btn.style.display='';
+      show('local-ai');
+    }
+  }
+  function localStartGuessing(){
+    lRows=[]; lGuess=Array(CODE_LENGTH).fill(null); lSelColor=null;
+    lRenderSecBar(false); lRenderBoard();
+    lRenderPal('local-guess-colors','local-guess-hint',null,lOnGuessCol);
+    document.getElementById('local-guess-btn').disabled=true;
+    show('local-guess');
+  }
+
+  // ── Guess ──────────────────────────────────────────────────────────────────
+  function lOnGuessCol(id){lSelColor=lSelColor===id?null:id;lRenderPal('local-guess-colors','local-guess-hint',lSelColor,lOnGuessCol);lRenderBoard();}
+  function localSubmitGuess(){
+    if(lGuess.includes(null))return;
+    const result=lEval(lSecret,lGuess);
+    lRows.push({guess:[...lGuess],result});
+    if(result.exact===CODE_LENGTH){lRenderSecBar(true);lRenderBoard();lShowResult(true);}
+    else if(lRows.length>=MAX_ROWS){lRenderSecBar(true);lRenderBoard();lShowResult(false);}
+    else{lGuess=Array(CODE_LENGTH).fill(null);lSelColor=null;lRenderPal('local-guess-colors','local-guess-hint',null,lOnGuessCol);lRenderBoard();document.getElementById('local-guess-btn').disabled=true;}
+  }
+
+  function lRenderSecBar(revealed){
+    const el=document.getElementById('local-secret-bar'); el.innerHTML='';
+    lSecret.forEach(c=>{const d=document.createElement('div');d.className='peg';d.style.cssText=revealed?'width:36px;height:36px;background:'+lHex(c)+';box-shadow:0 0 12px '+lHex(c)+'66':'width:36px;height:36px;background:#e8e0d8;border:2px dashed #c8c0b8';el.appendChild(d);});
+    const lbl=document.createElement('div');lbl.style.cssText='margin-left:6px;font-size:10px;letter-spacing:3px;color:#bbb';lbl.textContent=revealed?'ENTHÜLLT':'GEHEIM';el.appendChild(lbl);
+  }
+
+  function lRenderBoard(){
+    const el=document.getElementById('local-board'); el.innerHTML='';
+    const row=document.createElement('div'); row.className='row active';
+    const num=document.createElement('div'); num.className='row-num'; num.textContent=lRows.length+1; row.appendChild(num);
+    const pegs=document.createElement('div'); pegs.className='pegs';
+    lGuess.forEach((c,i)=>{
+      const p=document.createElement('div');
+      p.className='peg'+(c?'':' peg-empty')+(lSelColor?' peg-click':'')+(lSelColor&&!c?' peg-hl':'');
+      p.style.cssText='width:36px;height:36px;'+(c?'background:'+lHex(c)+';box-shadow:0 0 8px '+lHex(c)+'44':'');
+      p.onclick=()=>{if(!lSelColor)return;lGuess[i]=lSelColor;lRenderBoard();document.getElementById('local-guess-btn').disabled=lGuess.includes(null);};
+      pegs.appendChild(p);
+    });
+    row.appendChild(pegs);const sp=document.createElement('div');sp.style.width='48px';row.appendChild(sp);el.appendChild(row);
+    [...lRows].reverse().forEach((r,ri)=>el.appendChild(lMakeFilledRow(lRows.length-1-ri,r)));
+    const pct=(lRows.length/MAX_ROWS)*100;
+    const fill=document.getElementById('local-progress-fill'),lbl2=document.getElementById('local-progress-label');
+    if(fill)fill.style.width=pct+'%'; if(lbl2)lbl2.textContent=lRows.length+' / '+MAX_ROWS+' VERSUCHE';
+  }
+
+  function lMakeFilledRow(idx,row){
+    const div=document.createElement('div');div.className='row filled';
+    const num=document.createElement('div');num.className='row-num';num.textContent=idx+1;div.appendChild(num);
+    const pegs=document.createElement('div');pegs.className='pegs';
+    row.guess.forEach(c=>{const p=document.createElement('div');p.className='peg';p.style.cssText='width:36px;height:36px;background:'+lHex(c)+';box-shadow:0 0 8px '+lHex(c)+'44';pegs.appendChild(p);});
+    div.appendChild(pegs);div.appendChild(lMakeFB(row.result));return div;
+  }
+
+  function lMakeFB({exact,color}){
+    const items=[...Array(exact).fill('e'),...Array(color).fill('c'),...Array(CODE_LENGTH-exact-color).fill('n')];
+    const g=document.createElement('div');g.className='feedback';
+    items.forEach(t=>{const d=document.createElement('div');d.className=t==='e'?'fb-exact':t==='c'?'fb-color':'fb-none';if(t==='e')d.textContent='✓';g.appendChild(d);});
+    return g;
+  }
+
+  function lRenderPal(colId,hintId,sel,onSel){
+    const el=document.getElementById(colId);el.innerHTML='';
+    const hint=document.getElementById(hintId);
+    COLORS_L.forEach(c=>{
+      const d=document.createElement('div');d.className='color-dot'+(sel===c.id?' sel':'');
+      d.style.background=c.hex;d.style.boxShadow=sel===c.id?'0 0 18px '+c.hex+'cc':'0 0 6px '+c.hex+'44';
+      d.title=c.label;d.onclick=()=>onSel(c.id);el.appendChild(d);
+    });
+    hint.style.display=sel?'block':'none';
+    if(sel)hint.textContent=(COLORS_L.find(c=>c.id===sel)?.label||'')+' gewählt — auf ein Feld tippen';
+  }
+
+  // ── AI ─────────────────────────────────────────────────────────────────────
+  function lRenderAiSecBar(){
+    const el=document.getElementById('local-ai-secret-bar');el.innerHTML='';
+    lSecret.forEach(c=>{const d=document.createElement('div');d.style.cssText='width:36px;height:36px;border-radius:50%;background:'+lHex(c)+';box-shadow:0 0 10px '+lHex(c)+'55';el.appendChild(d);});
+    const lbl=document.createElement('div');lbl.style.cssText='margin-left:6px;font-size:10px;letter-spacing:3px;color:#a07840;font-weight:700';lbl.textContent='DEIN CODE';el.appendChild(lbl);
+  }
+  function lRenderAiBoard(){
+    const el=document.getElementById('local-ai-board');el.innerHTML='';
+    [...lRows].reverse().forEach((r,ri)=>el.appendChild(lMakeFilledRow(lRows.length-1-ri,r)));
+  }
+  function localDoAiGuess(){
+    if(lAiThinking)return; lAiThinking=true;
+    const btn=document.getElementById('local-ai-btn');btn.textContent='KI DENKT …';btn.disabled=true;
+    setTimeout(()=>{
+      const g=lKnuth(lAiPossible,lAiAll,lRows.length===0);
+      const result=lEval(lSecret,g);
+      lRows.push({guess:g,result});
+      lAiPossible=lAiPossible.filter(p=>{const r=lEval(p,g);return r.exact===result.exact&&r.color===result.color;});
+      lRenderAiBoard();
+      document.getElementById('local-ai-info').innerHTML='🤖 KI analysiert noch <span style="color:#a07840">'+lAiPossible.length+'</span> mögliche Codes';
+      lAiThinking=false;
+      if(result.exact===CODE_LENGTH){lShowAiResult(true);}
+      else if(lRows.length>=MAX_ROWS){lShowAiResult(false);}
+      else{btn.textContent='NÄCHSTER VERSUCH →';btn.disabled=false;}
+    },700);
+  }
+
+  function lShowAiResult(won){
+    const el=document.getElementById('screen-local-ai');
+    const old=el.querySelector('.local-ai-result');if(old)old.remove();
+    const div=document.createElement('div');div.className='local-ai-result';
+    div.style.cssText='background:'+(won?'#e8f5ee':'#f5e8e8')+';border:1px solid '+(won?'#2d6a4f':'#c06060')+';border-radius:16px;padding:24px 32px;text-align:center;width:100%;max-width:400px;margin-top:8px';
+    div.innerHTML='<div style="font-size:36px;margin-bottom:8px">'+(won?'🤖✓':'🤖✗')+'</div>'
+      +'<div style="font-weight:900;font-size:18px;color:'+(won?'#22c55e':'#e63946')+';margin-bottom:6px">'+(won?'KI gewonnen in '+lRows.length+' Versuchen!':'KI hat verloren!')+'</div>'
+      +'<div style="font-size:12px;color:#888;margin-bottom:20px">'+(won?'Der Knuth-Algorithmus ist unschlagbar 😈':'Das sollte nicht passieren…')+'</div>'
+      +'<button class="btn-accent" onclick="showLocal()">NEUES SPIEL</button>';
+    document.getElementById('local-ai-btn').style.display='none';
+    el.appendChild(div);
+  }
+
+  function lShowResult(won){
+    const box=document.getElementById('local-result-box');
+    box.style.cssText='background:'+(won?'#e8f5ee':'#f5e8e8')+';border:1px solid '+(won?'#2d6a4f':'#c06060');
+    document.getElementById('local-result-emoji').textContent=won?'🏆':'💀';
+    document.getElementById('local-result-title').style.color=won?'#22c55e':'#e63946';
+    document.getElementById('local-result-title').textContent=won?'Code geknackt!':'Code verloren';
+    document.getElementById('local-result-sub').textContent=won?'In '+lRows.length+' von '+MAX_ROWS+' Versuchen':'Alle '+MAX_ROWS+' Versuche aufgebraucht';
+    show('local-result');
+  }
+
+  function localAbort(){ if(confirm('Spiel abbrechen?')) showLocal(); }
+</script>
+
+<!-- IMPRESSUM -->
+<div id="screen-impressum" class="screen">
+  <div style="width:100%;max-width:460px;background:#fff;border:1px solid #d8d0c8;border-radius:16px;padding:28px 24px">
+    <div style="font-size:10px;letter-spacing:4px;color:#bbb;margin-bottom:16px">IMPRESSUM</div>
+    <div style="font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:12px">Angaben gemäß § 5 TMG</div>
+    <div style="font-size:13px;color:#555;line-height:2">
+      Alexander Scherer<br>
+      Mertensstraße 18<br>
+      13587 Berlin<br>
+    </div>
+    <div style="font-size:10px;letter-spacing:4px;color:#bbb;margin-top:20px;margin-bottom:10px">KONTAKT</div>
+    <div style="font-size:13px;color:#555;line-height:2">
+      E-Mail: <a href="mailto:alex.glauche@googlemail.com" style="color:#a07840">alex.glauche@googlemail.com</a>
+    </div>
+    <div style="font-size:10px;letter-spacing:4px;color:#bbb;margin-top:20px;margin-bottom:10px">HINWEIS</div>
+    <div style="font-size:12px;color:#888;line-height:1.8">
+      Dieses Spiel ist ein privates, nicht-kommerzielles Projekt.<br>
+      Es wird kein Impressum im Sinne eines geschäftsmäßigen Angebots benötigt,<br>
+      jedoch wird aus Transparenzgründen auf diese Seite hingewiesen.
+    </div>
+    <div style="margin-top:24px">
+      <button class="btn-accent" onclick="show('main-menu')">← ZURÜCK</button>
+    </div>
+  </div>
+</div>
+
+<!-- DATENSCHUTZ -->
+<div id="screen-datenschutz" class="screen">
+  <div style="width:100%;max-width:460px;background:#fff;border:1px solid #d8d0c8;border-radius:16px;padding:28px 24px;overflow-y:auto;max-height:80vh">
+    <div style="font-size:10px;letter-spacing:4px;color:#bbb;margin-bottom:16px">DATENSCHUTZERKLÄRUNG</div>
+
+    <div style="font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:8px">1. Verantwortlicher</div>
+    <div style="font-size:13px;color:#555;line-height:1.8;margin-bottom:20px">
+      Alexander Scherer, Mertensstraße 18, 13587 Berlin<br>
+      E-Mail: <a href="mailto:alex.glauche@googlemail.com" style="color:#a07840">alex.glauche@googlemail.com</a>
+    </div>
+
+    <div style="font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:8px">2. Welche Daten werden verarbeitet?</div>
+    <div style="font-size:13px;color:#555;line-height:1.8;margin-bottom:20px">
+      Dieses Spiel ist ein privates, nicht-kommerzielles Projekt. Es werden <strong>keine personenbezogenen Daten</strong> dauerhaft gespeichert oder weitergegeben.<br><br>
+      Im Online-Modus werden folgende technische Daten <strong>temporär</strong> über den Dienst Supabase (Supabase Inc., 970 Toa Payoh North, Singapur) übertragen:
+      <ul style="margin:8px 0 0 16px;line-height:2">
+        <li>Spielzüge und Spielergebnisse (verschlüsselt in Echtzeit)</li>
+        <li>Chat-Nachrichten zwischen Spielern</li>
+        <li>Verbindungs-Metadaten (IP-Adresse, Zeitstempel)</li>
+      </ul>
+      <br>
+      Diese Daten existieren nur für die Dauer einer Spielsitzung und werden <strong>nicht dauerhaft gespeichert</strong>. Es werden keine Nutzerkonten angelegt.
+    </div>
+
+    <div style="font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:8px">3. Supabase Realtime</div>
+    <div style="font-size:13px;color:#555;line-height:1.8;margin-bottom:20px">
+      Der Online-Spielmodus nutzt den Dienst <strong>Supabase Realtime</strong> (WebSocket-Verbindungen) für die Echtzeit-Kommunikation zwischen Spielern. Der Supabase-Server ist in der Region <strong>EU (Frankfurt / Stockholm)</strong> gehostet, sodass die Daten den europäischen Datenschutzstandards unterliegen.<br><br>
+      Weitere Informationen: <a href="https://supabase.com/privacy" target="_blank" style="color:#a07840">supabase.com/privacy</a>
+    </div>
+
+    <div style="font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:8px">4. Cookies & lokale Speicherung</div>
+    <div style="font-size:13px;color:#555;line-height:1.8;margin-bottom:20px">
+      Dieses Spiel verwendet <strong>keine Cookies</strong>. Der Browser-Speicher (localStorage) wird ausschließlich für die Supabase-Zugangsdaten verwendet, die du selbst einträgst. Diese Daten verlassen deinen Browser nicht und werden nicht an Dritte übermittelt.
+    </div>
+
+    <div style="font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:8px">5. Deine Rechte (DSGVO)</div>
+    <div style="font-size:13px;color:#555;line-height:1.8;margin-bottom:20px">
+      Da keine personenbezogenen Daten dauerhaft gespeichert werden, sind die typischen Betroffenenrechte (Auskunft, Löschung, Berichtigung) faktisch nicht anwendbar. Bei Fragen wende dich an die oben genannte E-Mail-Adresse.
+    </div>
+
+    <div style="font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:8px">6. Rechtsgrundlage</div>
+    <div style="font-size:13px;color:#555;line-height:1.8;margin-bottom:24px">
+      Die temporäre Verarbeitung der Spieldaten erfolgt auf Basis von Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung / Nutzung des Dienstes auf Wunsch des Nutzers).
+    </div>
+
+    <button class="btn-accent" onclick="show('main-menu')">← ZURÜCK</button>
+  </div>
+</div>
+
 </body>
 </html>
