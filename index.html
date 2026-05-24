@@ -102,7 +102,7 @@
     .peg-empty { background: transparent; border: 2px dashed #c8c0b8; }
     .peg-click { cursor: pointer; }
     .peg-hl    { transform: scale(1.15); }
-    .feedback  { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 48px; flex-shrink: 0; }
+    .feedback  { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; min-width: 44px; flex-shrink: 0; }
     .fb-exact  { width: 20px; height: 20px; border-radius: 4px; background: #22c55e; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; color: #071a0e; }
     .fb-color  { width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid #f59e0b; }
     .fb-none   { width: 20px; height: 20px; border-radius: 50%; border: 1px solid #d8d0c8; background: #ede8e2; }
@@ -1049,7 +1049,7 @@
 <!-- LOKAL SET CODE -->
 <div id="screen-local-set" class="screen">
   <div id="local-set-label" style="text-align:center;color:#888;font-size:13px;line-height:1.8"></div>
-  <div style="display:flex;gap:14px;background:#fff;border:1px solid #d8d0c8;border-radius:16px;padding:18px 24px;" id="local-set-slots"></div>
+  <div style="display:flex;flex-wrap:wrap;gap:10px;background:#fff;border:1px solid #d8d0c8;border-radius:16px;padding:18px 20px;justify-content:center;max-width:420px;" id="local-set-slots"></div>
   <div class="palette" style="max-width:420px">
     <div class="pal-label">FARBPALETTE</div>
     <div class="pal-colors" id="local-set-colors"></div>
@@ -1232,50 +1232,78 @@
     b([]); return r;
   }
 
+  // KI — merkt sich nur welche Farben sie gesehen hat, keine Logik
+  // Typisch 6–9 Versuche, manchmal auch mehr
   function lKnuth(possible, all, first) {
-    // Erster Zug: zufällig aus guten Startkombinationen wählen
-    if (first) {
-      const starters = [
-        ['red','blue','green','yellow'],
-        ['red','blue','yellow','pink'],
-        ['red','green','purple','yellow'],
-        ['blue','green','yellow','pink'],
-        ['red','purple','blue','green'],
-        ['pink','yellow','green','blue'],
-        ['red','yellow','purple','pink'],
-        ['green','blue','red','purple'],
-      ];
-      return starters[Math.floor(Math.random() * starters.length)];
+    const avail = IDS_L.slice(0, lNumColors);
+
+    // Gedächtnis der KI — welche Farben hat sie schon probiert
+    const usedColors = new Set();
+    for (const row of lRows) {
+      row.guess.forEach(id => usedColors.add(id));
     }
 
-    // Wenn nur noch wenige Möglichkeiten: manchmal zufällig raten (simuliert Unvollkommenheit)
-    if (possible.length <= 6 && Math.random() < 0.35) {
+    // ── Erster Zug: zufällige Farben, aber keine Duplikate ───────────────────
+    if (first) {
+      const shuffled = [...avail].sort(() => Math.random() - 0.5);
+      return Array.from({length: lCodeLen}, (_, i) => shuffled[i % shuffled.length]);
+    }
+
+    if (possible.length === 0) return all[Math.floor(Math.random() * all.length)];
+
+    // ── Berechne wie viele Versuche noch übrig sind ───────────────────────────
+    const triesLeft = MAX_ROWS - lRows.length;
+
+    // ── Wenn nur noch 1-2 Versuche: dann doch richtig raten ──────────────────
+    if (triesLeft <= 2 && possible.length <= 4) {
       return possible[Math.floor(Math.random() * possible.length)];
     }
 
-    // Manchmal eine zufällige gültige Vermutung statt der optimalen wählen
-    if (Math.random() < 0.2 && possible.length > 1) {
-      return possible[Math.floor(Math.random() * Math.min(possible.length, 8))];
+    // ── Strategie basiert auf Versuchsnummer ──────────────────────────────────
+    const attempt = lRows.length; // 0-basiert
+
+    if (attempt <= 1) {
+      // Erste zwei Versuche: komplett zufällig aus verfügbaren Farben
+      return Array.from({length: lCodeLen}, () => avail[Math.floor(Math.random() * avail.length)]);
     }
 
-    // Minimax (Knuth) — aber nur über einen Teil der Kandidaten
-    if (possible.length <= 2) return possible[0];
-    let best = null, bestScore = Infinity;
-    // Begrenze auf max 200 Kandidaten für mehr Variation
-    const cands = possible.length <= 15 ? possible : all.slice(0, 200);
-    for (const g of cands) {
-      const buckets = {};
-      for (const p of possible) {
-        const r = lEval(p, g);
-        const k = r.exact + ',' + r.color;
-        buckets[k] = (buckets[k] || 0) + 1;
-      }
-      const worst = Math.max(...Object.values(buckets));
-      if (worst < bestScore || (worst === bestScore && possible.includes(g))) {
-        bestScore = worst; best = g;
-      }
+    if (attempt === 2) {
+      // Versuch 3: probiere neue Farben die noch nicht vorkamen
+      const unused = avail.filter(id => !usedColors.has(id));
+      const pool = unused.length >= lCodeLen ? unused : avail;
+      return Array.from({length: lCodeLen}, () => pool[Math.floor(Math.random() * pool.length)]);
     }
-    return best;
+
+    // ── Ab Versuch 4: die KI "denkt nach" aber macht Fehler ──────────────────
+    // Sie kennt die exakten Treffer aus dem letzten Versuch
+    const lastRow = lRows[lRows.length - 1];
+    const lastGuess = lastRow.guess;
+    const lastResult = lastRow.result;
+
+    // Baue neuen Versuch basierend auf letztem Feedback
+    const newGuess = [...lastGuess];
+
+    // Behalte exakte Treffer mit 70% Wahrscheinlichkeit
+    for (let i = 0; i < lCodeLen; i++) {
+      if (Math.random() < 0.70) {
+        // Ändere diese Position
+        newGuess[i] = avail[Math.floor(Math.random() * avail.length)];
+      }
+      // sonst: behalte den letzten Wert an dieser Position
+    }
+
+    // Wenn exakte Treffer da waren: behalte diese Positionen öfter
+    if (lastResult.exact > 0) {
+      // Finde Positionen die vielleicht richtig waren (KI weiß nicht welche genau)
+      // Sie rät zufällig welche richtig waren
+      const keepCount = Math.min(lastResult.exact, lCodeLen);
+      const positions = Array.from({length: lCodeLen}, (_, i) => i)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, keepCount);
+      positions.forEach(pos => { newGuess[pos] = lastGuess[pos]; });
+    }
+
+    return newGuess;
   }
 
   function startMode(m) {
@@ -1316,7 +1344,7 @@
     });
   }
   function lOnSetCol(id){lSetSel=lSetSel===id?null:id;lRenderPal('local-set-colors','local-set-hint',lSetSel,lOnSetCol);lRenderSetSlots();}
-  function localResetSet(){lSetCode=Array(CODE_LENGTH).fill(null);lSetSel=null;lRenderSetSlots();lRenderPal('local-set-colors','local-set-hint',null,lOnSetCol);document.getElementById('local-set-confirm').disabled=true;}
+  function localResetSet(){lSetCode=Array(lCodeLen).fill(null);lSetSel=null;lRenderSetSlots();lRenderPal('local-set-colors','local-set-hint',null,lOnSetCol);document.getElementById('local-set-confirm').disabled=true;}
   function localConfirmCode(){
     lSecret=[...lSetCode];
     if(lMode==='2player'){show('local-hide');}
@@ -1397,8 +1425,13 @@
   }
 
   function lMakeFB({exact,color}){
-    const items=[...Array(exact).fill('e'),...Array(color).fill('c'),...Array(CODE_LENGTH-exact-color).fill('n')];
+    const total=lCodeLen;
+    const items=[...Array(exact).fill('e'),...Array(color).fill('c'),...Array(total-exact-color).fill('n')];
     const g=document.createElement('div');g.className='feedback';
+    // Dynamische Grid-Breite je nach Code-Länge
+    const cols=total<=4?2:total<=6?3:3;
+    const dotSize=total<=4?20:17;
+    g.style.cssText='display:grid;grid-template-columns:repeat('+cols+',1fr);gap:3px;width:'+(cols*dotSize+cols*3)+'px;flex-shrink:0';
     items.forEach(t=>{const d=document.createElement('div');d.className=t==='e'?'fb-exact':t==='c'?'fb-color':'fb-none';if(t==='e')d.textContent='✓';g.appendChild(d);});
     return g;
   }
@@ -1463,7 +1496,7 @@
     document.getElementById('local-result-title').style.color=won?'#22c55e':'#e63946';
     document.getElementById('local-result-title').textContent=won?'Code geknackt!':'Code verloren';
     document.getElementById('local-result-sub').textContent=won?'In '+lRows.length+' von '+MAX_ROWS+' Versuchen':'Alle '+MAX_ROWS+' Versuche aufgebraucht';
-    // Zeige den Code
+    // Zeige den Code — Anzahl Kugeln = lCodeLen
     const codeEl = document.getElementById('local-result-code');
     codeEl.innerHTML = '';
     lSecret.forEach(colorId => {
