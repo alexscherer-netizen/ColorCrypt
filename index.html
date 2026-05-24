@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Mastermind Online</title>
+  <title>ColorCrypt</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -196,6 +196,28 @@
     #chat-toast.show { opacity: 1; transform: translateY(0); }
     #chat-toast .toast-sender { font-size: 9px; letter-spacing: 2px; color: #c9a96e; font-weight: 700; margin-bottom: 3px; }
 
+    /* Timer */
+    #local-timer {
+      font-size: 28px; font-weight: 900; letter-spacing: 2px;
+      color: #1a1a2e; font-variant-numeric: tabular-nums;
+      background: #fff; border: 1px solid #d8d0c8;
+      border-radius: 12px; padding: 8px 20px; text-align: center;
+    }
+    #local-timer.warning { color: #e63946; animation: timerPulse 1s infinite; }
+    @keyframes timerPulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+    /* Settings screen */
+    .setting-row { display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid #f0ede8; }
+    .setting-row:last-child { border-bottom:none; }
+    .setting-label { font-size:13px; color:#1a1a2e; font-weight:700; }
+    .setting-sub { font-size:11px; color:#bbb; margin-top:2px; }
+    .seg-control { display:flex; background:#f0ede8; border-radius:10px; padding:3px; gap:2px; }
+    .seg-btn { padding:6px 14px; border-radius:8px; border:none; background:transparent; cursor:pointer; font-family:'Courier New',monospace; font-size:11px; font-weight:700; color:#888; transition:all .15s; }
+    .seg-btn.active { background:#fff; color:#1a1a2e; box-shadow:0 1px 4px rgba(0,0,0,.1); }
+
+    /* Blind mode overlay on pegs */
+    .peg-blind { background: #c8c0b8 !important; box-shadow: none !important; }
+
     /* Haupt-Menü Cards */
     .menu-card {
       width: 100%; max-width: 420px;
@@ -227,7 +249,7 @@
 
 <div style="text-align:center;margin-bottom:16px">
   <div style="font-size:9px;letter-spacing:5px;color:#bbb;margin-bottom:4px">ONLINE</div>
-  <h1>MASTERMIND</h1>
+  <h1>COLORCRYPT</h1>
   <div id="subtitle" style="font-size:10px;color:#aaa;margin-top:5px;letter-spacing:3px">SPIELMODUS WÄHLEN</div>
 <div id="main-menu-btn" style="display:none;font-size:13px;font-weight:700;letter-spacing:3px;color:#a07840;cursor:pointer;margin-top:8px;padding:8px 16px;border:1px solid #d8c8a8;border-radius:10px;background:#fdf8f0" onclick="goMainMenu()">← HAUPTMENÜ</div>
 </div>
@@ -288,7 +310,7 @@
 <div id="screen-lobby" class="screen">
   <div class="lobby-box">
     <div style="font-size:32px;margin-bottom:12px">🎯</div>
-    <h2>Mastermind Online</h2>
+    <h2>ColorCrypt Online</h2>
     <p>Spiele gegen jemanden über das Internet.<br>Erstelle einen Raum oder tritt einem bei.</p>
     <div style="display:flex;flex-direction:column;gap:10px;align-items:center">
       <button class="btn-accent" onclick="createRoom()">RAUM ERSTELLEN</button>
@@ -529,7 +551,7 @@
   // ── Supabase Realtime Channel ──────────────────────────────────────────────
   function subscribeRoom() {
     if (channel) channel.unsubscribe();
-    channel = sb.channel('mastermind-' + roomCode, {
+    channel = sb.channel('colorcrypt-' + roomCode, {
       config: { broadcast: { self: false } }
     });
 
@@ -972,6 +994,56 @@
     <div style="font-size:30px">🧠</div>
     <div><div class="menu-title">KI BEOBACHTEN</div><div class="menu-sub">Du legst den Code — KI versucht ihn zu knacken</div></div>
   </div>
+  <div class="local-card" onclick="show('local-settings')" style="border-style:dashed;opacity:.85">
+    <div style="font-size:30px">⚙️</div>
+    <div><div class="menu-title">EINSTELLUNGEN</div><div class="menu-sub" id="settings-summary">Standard · Normal · Vollfarben</div></div>
+  </div>
+</div>
+
+<!-- EINSTELLUNGEN -->
+<div id="screen-local-settings" class="screen">
+  <div style="width:100%;max-width:420px;background:#fff;border:1px solid #d8d0c8;border-radius:16px;padding:24px 20px">
+    <div style="font-size:10px;letter-spacing:4px;color:#bbb;margin-bottom:16px">EINSTELLUNGEN</div>
+
+    <div class="setting-row">
+      <div><div class="setting-label">Code-Länge</div><div class="setting-sub">Wie viele Farben im Code</div></div>
+      <div class="seg-control" id="seg-length">
+        <button class="seg-btn" onclick="setSetting('length',3,this)">3</button>
+        <button class="seg-btn active" onclick="setSetting('length',4,this)">4</button>
+        <button class="seg-btn" onclick="setSetting('length',5,this)">5</button>
+        <button class="seg-btn" onclick="setSetting('length',6,this)">6</button>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div><div class="setting-label">Zeitrennen</div><div class="setting-sub">Stoppe die Zeit pro Versuch</div></div>
+      <div class="seg-control" id="seg-timer">
+        <button class="seg-btn active" onclick="setSetting('timer',0,this)">Aus</button>
+        <button class="seg-btn" onclick="setSetting('timer',30,this)">30s</button>
+        <button class="seg-btn" onclick="setSetting('timer',60,this)">60s</button>
+        <button class="seg-btn" onclick="setSetting('timer',120,this)">2min</button>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div><div class="setting-label">Blindmodus</div><div class="setting-sub">Keine Farben sichtbar beim Raten</div></div>
+      <div class="seg-control" id="seg-blind">
+        <button class="seg-btn active" onclick="setSetting('blind',false,this)">Aus</button>
+        <button class="seg-btn" onclick="setSetting('blind',true,this)">An</button>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div><div class="setting-label">Verfügbare Farben</div><div class="setting-sub">Wie viele Farben zur Auswahl</div></div>
+      <div class="seg-control" id="seg-colors">
+        <button class="seg-btn" onclick="setSetting('numColors',4,this)">4</button>
+        <button class="seg-btn" onclick="setSetting('numColors',5,this)">5</button>
+        <button class="seg-btn active" onclick="setSetting('numColors',6,this)">6</button>
+      </div>
+    </div>
+
+  </div>
+  <button class="btn-accent" onclick="applySettings()">ÜBERNEHMEN →</button>
 </div>
 
 <!-- LOKAL SET CODE -->
@@ -1001,6 +1073,7 @@
 <!-- LOKAL GUESS -->
 <div id="screen-local-guess" class="screen">
   <div class="secret-bar" id="local-secret-bar"></div>
+  <div id="local-timer" style="display:none">00:00</div>
   <div style="width:100%">
     <div class="progress-label" id="local-progress-label">0 / 10 VERSUCHE</div>
     <div class="progress-bar" style="margin-top:4px"><div class="progress-fill" id="local-progress-fill" style="width:0%"></div></div>
@@ -1041,13 +1114,42 @@
   <div class="result-box" id="local-result-box">
     <div id="local-result-emoji" style="font-size:52px;margin-bottom:12px"></div>
     <h2 id="local-result-title" style="font-size:24px;font-weight:900;margin-bottom:8px"></h2>
-    <p id="local-result-sub" style="font-size:13px;color:#888;margin-bottom:24px"></p>
+    <p id="local-result-sub" style="font-size:13px;color:#888;margin-bottom:16px"></p>
+    <div style="margin-bottom:20px">
+      <div style="font-size:10px;letter-spacing:3px;color:#bbb;margin-bottom:10px">DER CODE WAR</div>
+      <div id="local-result-code" style="display:flex;gap:10px;justify-content:center"></div>
+    </div>
     <button class="btn-accent" onclick="showLocal()">NEUES SPIEL</button>
   </div>
 </div>
 
 
 <script>
+  // ══════════════════════════════════════════════════════
+  //  EINSTELLUNGEN
+  // ══════════════════════════════════════════════════════
+
+  let lSettings = { length: 4, timer: 0, blind: false, numColors: 6 };
+
+  function setSetting(key, val, btn) {
+    lSettings[key] = val;
+    const seg = btn.closest('.seg-control');
+    seg.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  function applySettings() {
+    // Update CODE_LENGTH dynamically via override
+    lCodeLen  = lSettings.length;
+    lNumColors = lSettings.numColors;
+    // Update summary
+    const timerLabel = lSettings.timer === 0 ? 'Kein Timer' : lSettings.timer + 's';
+    const blindLabel = lSettings.blind ? 'Blindmodus' : 'Normal';
+    const colLabel   = lNumColors + ' Farben';
+    document.getElementById('settings-summary').textContent = colLabel + ' · ' + timerLabel + ' · ' + blindLabel;
+    show('local-menu');
+  }
+
   // ══════════════════════════════════════════════════════
   //  NAVIGATION HAUPT-MENÜ
   // ══════════════════════════════════════════════════════
@@ -1060,10 +1162,11 @@
   }
 
   function showLocal() {
+    lStopTimer();
     document.getElementById('subtitle').textContent = 'LOKAL SPIELEN';
     document.getElementById('main-menu-btn').style.display = 'block';
-    lMode=null; lSecret=[]; lRows=[]; lGuess=Array(CODE_LENGTH).fill(null);
-    lSelColor=null; lSetCode=Array(CODE_LENGTH).fill(null); lSetSel=null;
+    lMode=null; lSecret=[]; lRows=[]; lGuess=Array(lCodeLen).fill(null);
+    lSelColor=null; lSetCode=Array(lCodeLen).fill(null); lSetSel=null;
     lAiAll=[]; lAiPossible=[]; lAiThinking=false;
     const aiRes=document.querySelector('.local-ai-result'); if(aiRes) aiRes.remove();
     show('local-menu');
@@ -1094,60 +1197,105 @@
   const IDS_L = COLORS_L.map(c => c.id);
   const lHex = id => COLORS_L.find(c=>c.id===id)?.hex ?? '#ccc';
 
-  let lMode=null, lSecret=[], lRows=[], lGuess=Array(CODE_LENGTH).fill(null);
-  let lSelColor=null, lSetCode=Array(CODE_LENGTH).fill(null), lSetSel=null;
+  // Dynamische Einstellungen (werden von lSettings überschrieben)
+  let lCodeLen   = 4;
+  let lNumColors = 6;
+  let lTimerSec  = null; // aktiver Timer-Interval
+  let lTimeLeft  = 0;
+
+  let lMode=null, lSecret=[], lRows=[], lGuess=[];
+  let lSelColor=null, lSetCode=[], lSetSel=null;
   let lAiAll=[], lAiPossible=[], lAiThinking=false;
 
   function lEval(secret, guess) {
+    const len = secret.length;
     let exact=0, color=0;
-    const sU=Array(CODE_LENGTH).fill(false), gU=Array(CODE_LENGTH).fill(false);
-    for(let i=0;i<CODE_LENGTH;i++){if(guess[i]===secret[i]){exact++;sU[i]=gU[i]=true;}}
-    for(let i=0;i<CODE_LENGTH;i++){if(gU[i])continue;for(let j=0;j<CODE_LENGTH;j++){if(!sU[j]&&guess[i]===secret[j]){color++;sU[j]=true;break;}}}
+    const sU=Array(len).fill(false), gU=Array(len).fill(false);
+    for(let i=0;i<len;i++){if(guess[i]===secret[i]){exact++;sU[i]=gU[i]=true;}}
+    for(let i=0;i<len;i++){if(gU[i])continue;for(let j=0;j<len;j++){if(!sU[j]&&guess[i]===secret[j]){color++;sU[j]=true;break;}}}
     return {exact,color};
   }
 
   function lRandCode() {
-    const s=[...IDS_L];
+    const avail = IDS_L.slice(0, lNumColors);
+    const s=[...avail];
     for(let i=s.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[s[i],s[j]]=[s[j],s[i]];}
-    return s.slice(0,CODE_LENGTH);
+    // If lCodeLen > avail, allow repeats
+    if(lCodeLen <= avail.length) return s.slice(0, lCodeLen);
+    return Array.from({length:lCodeLen},()=>avail[Math.floor(Math.random()*avail.length)]);
   }
 
   function lBuildAll() {
+    const avail = IDS_L.slice(0, lNumColors);
     const r=[];
-    function b(c){if(c.length===CODE_LENGTH){r.push([...c]);return;}for(const id of IDS_L){c.push(id);b(c);c.pop();}}
+    function b(c){if(c.length===lCodeLen){r.push([...c]);return;}for(const id of avail){c.push(id);b(c);c.pop();}}
     b([]); return r;
   }
 
   function lKnuth(possible, all, first) {
-    if(first) return ['red','red','blue','blue'];
-    if(possible.length<=2) return possible[0];
-    let best=null, bestScore=Infinity;
-    const cands=possible.length<=20?possible:all;
-    for(const g of cands){
-      const buckets={};
-      for(const p of possible){const r=lEval(p,g);const k=r.exact+','+r.color;buckets[k]=(buckets[k]||0)+1;}
-      const worst=Math.max(...Object.values(buckets));
-      if(worst<bestScore||(worst===bestScore&&possible.includes(g))){bestScore=worst;best=g;}
+    // Erster Zug: zufällig aus guten Startkombinationen wählen
+    if (first) {
+      const starters = [
+        ['red','blue','green','yellow'],
+        ['red','blue','yellow','pink'],
+        ['red','green','purple','yellow'],
+        ['blue','green','yellow','pink'],
+        ['red','purple','blue','green'],
+        ['pink','yellow','green','blue'],
+        ['red','yellow','purple','pink'],
+        ['green','blue','red','purple'],
+      ];
+      return starters[Math.floor(Math.random() * starters.length)];
+    }
+
+    // Wenn nur noch wenige Möglichkeiten: manchmal zufällig raten (simuliert Unvollkommenheit)
+    if (possible.length <= 6 && Math.random() < 0.35) {
+      return possible[Math.floor(Math.random() * possible.length)];
+    }
+
+    // Manchmal eine zufällige gültige Vermutung statt der optimalen wählen
+    if (Math.random() < 0.2 && possible.length > 1) {
+      return possible[Math.floor(Math.random() * Math.min(possible.length, 8))];
+    }
+
+    // Minimax (Knuth) — aber nur über einen Teil der Kandidaten
+    if (possible.length <= 2) return possible[0];
+    let best = null, bestScore = Infinity;
+    // Begrenze auf max 200 Kandidaten für mehr Variation
+    const cands = possible.length <= 15 ? possible : all.slice(0, 200);
+    for (const g of cands) {
+      const buckets = {};
+      for (const p of possible) {
+        const r = lEval(p, g);
+        const k = r.exact + ',' + r.color;
+        buckets[k] = (buckets[k] || 0) + 1;
+      }
+      const worst = Math.max(...Object.values(buckets));
+      if (worst < bestScore || (worst === bestScore && possible.includes(g))) {
+        bestScore = worst; best = g;
+      }
     }
     return best;
   }
 
   function startMode(m) {
     lMode=m;
+    lStopTimer();
     if(m==='vs-computer'){
-      lSecret=lRandCode(); lRows=[]; lGuess=Array(CODE_LENGTH).fill(null); lSelColor=null;
+      lSecret=lRandCode(); lRows=[]; lGuess=Array(lCodeLen).fill(null); lSelColor=null;
       lRenderSecBar(false); lRenderBoard();
       lRenderPal('local-guess-colors','local-guess-hint',null,lOnGuessCol);
       document.getElementById('local-guess-btn').disabled=true;
+      if(lSettings.timer>0) lStartTimer();
       show('local-guess');
     } else if(m==='2player'){
-      lSetCode=Array(CODE_LENGTH).fill(null); lSetSel=null;
+      lSetCode=Array(lCodeLen).fill(null); lSetSel=null;
       document.getElementById('local-set-label').textContent='Spieler 1 legt den Geheimcode fest. Spieler 2 schaut weg!';
       lRenderSetSlots(); lRenderPal('local-set-colors','local-set-hint',null,lOnSetCol);
       document.getElementById('local-set-confirm').disabled=true;
       show('local-set');
     } else if(m==='vs-ai'){
-      lSetCode=Array(CODE_LENGTH).fill(null); lSetSel=null;
+      lSetCode=Array(lCodeLen).fill(null); lSetSel=null;
       document.getElementById('local-set-label').textContent='Lege einen Geheimcode fest. Die KI versucht ihn zu knacken!';
       lRenderSetSlots(); lRenderPal('local-set-colors','local-set-hint',null,lOnSetCol);
       document.getElementById('local-set-confirm').disabled=true;
@@ -1157,6 +1305,8 @@
 
   // ── Set Code ───────────────────────────────────────────────────────────────
   function lRenderSetSlots() {
+    // Ensure lSetCode has correct length
+    if(lSetCode.length !== lCodeLen) lSetCode = Array(lCodeLen).fill(null);
     const el=document.getElementById('local-set-slots'); el.innerHTML='';
     lSetCode.forEach((c,i)=>{
       const d=document.createElement('div');
@@ -1179,10 +1329,12 @@
     }
   }
   function localStartGuessing(){
-    lRows=[]; lGuess=Array(CODE_LENGTH).fill(null); lSelColor=null;
+    lRows=[]; lGuess=Array(lCodeLen).fill(null); lSelColor=null;
     lRenderSecBar(false); lRenderBoard();
     lRenderPal('local-guess-colors','local-guess-hint',null,lOnGuessCol);
     document.getElementById('local-guess-btn').disabled=true;
+    lStopTimer();
+    if(lSettings.timer>0) lStartTimer();
     show('local-guess');
   }
 
@@ -1191,10 +1343,17 @@
   function localSubmitGuess(){
     if(lGuess.includes(null))return;
     const result=lEval(lSecret,lGuess);
-    lRows.push({guess:[...lGuess],result});
-    if(result.exact===CODE_LENGTH){lRenderSecBar(true);lRenderBoard();lShowResult(true);}
-    else if(lRows.length>=MAX_ROWS){lRenderSecBar(true);lRenderBoard();lShowResult(false);}
-    else{lGuess=Array(CODE_LENGTH).fill(null);lSelColor=null;lRenderPal('local-guess-colors','local-guess-hint',null,lOnGuessCol);lRenderBoard();document.getElementById('local-guess-btn').disabled=true;}
+    // Blindmodus: result.color = 0 (no color hint shown)
+    const displayResult = lSettings.blind ? {exact:result.exact, color:0} : result;
+    lRows.push({guess:[...lGuess],result:displayResult});
+    if(result.exact===lCodeLen){lStopTimer();lRenderSecBar(true);lRenderBoard();lShowResult(true);}
+    else if(lRows.length>=MAX_ROWS){lStopTimer();lRenderSecBar(true);lRenderBoard();lShowResult(false);}
+    else{
+      lGuess=Array(lCodeLen).fill(null);lSelColor=null;
+      lRenderPal('local-guess-colors','local-guess-hint',null,lOnGuessCol);
+      lRenderBoard();document.getElementById('local-guess-btn').disabled=true;
+      if(lSettings.timer>0) lStartTimer(); // Reset timer each guess
+    }
   }
 
   function lRenderSecBar(revealed){
@@ -1210,8 +1369,10 @@
     const pegs=document.createElement('div'); pegs.className='pegs';
     lGuess.forEach((c,i)=>{
       const p=document.createElement('div');
-      p.className='peg'+(c?'':' peg-empty')+(lSelColor?' peg-click':'')+(lSelColor&&!c?' peg-hl':'');
-      p.style.cssText='width:36px;height:36px;'+(c?'background:'+lHex(c)+';box-shadow:0 0 8px '+lHex(c)+'44':'');
+      // Blindmodus: gesetzte Farben werden grau dargestellt
+      const blindClass = lSettings.blind && c ? ' peg-blind' : '';
+      p.className='peg'+(c?'':' peg-empty')+(lSelColor?' peg-click':'')+(lSelColor&&!c?' peg-hl':'')+blindClass;
+      p.style.cssText='width:36px;height:36px;'+(c&&!lSettings.blind?'background:'+lHex(c)+';box-shadow:0 0 8px '+lHex(c)+'44':c?'background:#c8c0b8':'');
       p.onclick=()=>{if(!lSelColor)return;lGuess[i]=lSelColor;lRenderBoard();document.getElementById('local-guess-btn').disabled=lGuess.includes(null);};
       pegs.appendChild(p);
     });
@@ -1226,7 +1387,12 @@
     const div=document.createElement('div');div.className='row filled';
     const num=document.createElement('div');num.className='row-num';num.textContent=idx+1;div.appendChild(num);
     const pegs=document.createElement('div');pegs.className='pegs';
-    row.guess.forEach(c=>{const p=document.createElement('div');p.className='peg';p.style.cssText='width:36px;height:36px;background:'+lHex(c)+';box-shadow:0 0 8px '+lHex(c)+'44';pegs.appendChild(p);});
+    row.guess.forEach(c=>{
+      const p=document.createElement('div');p.className='peg';
+      // Im Blindmodus vergangene Zeilen auch grau
+      p.style.cssText='width:36px;height:36px;background:'+(lSettings.blind?'#c8c0b8':lHex(c))+';box-shadow:'+(lSettings.blind?'none':'0 0 8px '+lHex(c)+'44');
+      pegs.appendChild(p);
+    });
     div.appendChild(pegs);div.appendChild(lMakeFB(row.result));return div;
   }
 
@@ -1240,7 +1406,7 @@
   function lRenderPal(colId,hintId,sel,onSel){
     const el=document.getElementById(colId);el.innerHTML='';
     const hint=document.getElementById(hintId);
-    COLORS_L.forEach(c=>{
+    COLORS_L.slice(0,lNumColors).forEach(c=>{
       const d=document.createElement('div');d.className='color-dot'+(sel===c.id?' sel':'');
       d.style.background=c.hex;d.style.boxShadow=sel===c.id?'0 0 18px '+c.hex+'cc':'0 0 6px '+c.hex+'44';
       d.title=c.label;d.onclick=()=>onSel(c.id);el.appendChild(d);
@@ -1270,7 +1436,7 @@
       lRenderAiBoard();
       document.getElementById('local-ai-info').innerHTML='🤖 KI analysiert noch <span style="color:#a07840">'+lAiPossible.length+'</span> mögliche Codes';
       lAiThinking=false;
-      if(result.exact===CODE_LENGTH){lShowAiResult(true);}
+      if(result.exact===lCodeLen){lShowAiResult(true);}
       else if(lRows.length>=MAX_ROWS){lShowAiResult(false);}
       else{btn.textContent='NÄCHSTER VERSUCH →';btn.disabled=false;}
     },700);
@@ -1290,16 +1456,69 @@
   }
 
   function lShowResult(won){
+    lStopTimer();
     const box=document.getElementById('local-result-box');
     box.style.cssText='background:'+(won?'#e8f5ee':'#f5e8e8')+';border:1px solid '+(won?'#2d6a4f':'#c06060');
     document.getElementById('local-result-emoji').textContent=won?'🏆':'💀';
     document.getElementById('local-result-title').style.color=won?'#22c55e':'#e63946';
     document.getElementById('local-result-title').textContent=won?'Code geknackt!':'Code verloren';
     document.getElementById('local-result-sub').textContent=won?'In '+lRows.length+' von '+MAX_ROWS+' Versuchen':'Alle '+MAX_ROWS+' Versuche aufgebraucht';
+    // Zeige den Code
+    const codeEl = document.getElementById('local-result-code');
+    codeEl.innerHTML = '';
+    lSecret.forEach(colorId => {
+      const d = document.createElement('div');
+      d.style.cssText = 'width:40px;height:40px;border-radius:50%;background:'+lHex(colorId)+';box-shadow:0 0 12px '+lHex(colorId)+'66;transition:transform 0.3s';
+      codeEl.appendChild(d);
+      // kleine Einblend-Animation
+      setTimeout(() => d.style.transform = 'scale(1.1)', 50);
+      setTimeout(() => d.style.transform = 'scale(1)', 350);
+    });
     show('local-result');
   }
 
-  function localAbort(){ if(confirm('Spiel abbrechen?')) showLocal(); }
+  function localAbort(){ lStopTimer(); if(confirm('Spiel abbrechen?')) showLocal(); }
+
+  // ── Timer ──────────────────────────────────────────────────────────────────
+  function lStartTimer() {
+    lStopTimer();
+    lTimeLeft = lSettings.timer;
+    const el = document.getElementById('local-timer');
+    el.style.display = 'block';
+    el.classList.remove('warning');
+    lUpdateTimerDisplay();
+    lTimerSec = setInterval(() => {
+      lTimeLeft--;
+      lUpdateTimerDisplay();
+      if(lTimeLeft <= 10) el.classList.add('warning');
+      if(lTimeLeft <= 0) {
+        lStopTimer();
+        // Zeit abgelaufen = leerer Versuch zählt als verloren
+        lRows.push({guess:Array(lCodeLen).fill(lGuess[0]||'red'),result:{exact:0,color:0}});
+        if(lRows.length>=MAX_ROWS){ lRenderSecBar(true); lRenderBoard(); lShowResult(false); }
+        else {
+          lGuess=Array(lCodeLen).fill(null); lSelColor=null;
+          lRenderPal('local-guess-colors','local-guess-hint',null,lOnGuessCol);
+          lRenderBoard(); document.getElementById('local-guess-btn').disabled=true;
+          lStartTimer();
+        }
+      }
+    }, 1000);
+  }
+
+  function lStopTimer() {
+    if(lTimerSec) { clearInterval(lTimerSec); lTimerSec=null; }
+    const el = document.getElementById('local-timer');
+    if(el) { el.style.display='none'; el.classList.remove('warning'); }
+  }
+
+  function lUpdateTimerDisplay() {
+    const el = document.getElementById('local-timer');
+    if(!el) return;
+    const m = Math.floor(lTimeLeft/60).toString().padStart(2,'0');
+    const s = (lTimeLeft%60).toString().padStart(2,'0');
+    el.textContent = m+':'+s;
+  }
 </script>
 
 <!-- IMPRESSUM -->
